@@ -13,6 +13,7 @@ library(tidyr)
 library(readxl) #to read excel files
 library(tidyverse) # str_replace_all()
 library(here)
+library(cowplot)
 
 ################################################################################
 ########################### Load AMR datasets ##################################
@@ -103,8 +104,10 @@ name_data = unique(df_AMR$Data)
     
     x_y <- merge(x, y, by = c('Country', 'Year', 'Pathogen', 'Antibiotic'))
     
-    ggplot(data = x_y) +
+    pa = ggplot(data = x_y) +
         geom_point(aes(x = p.x, y = p.y), size = 3, color = '#7fcdbb') +
+        geom_text(aes(x = 0.25, y = 0.8, label = paste0("Number of points:\n",
+                                                        nrow(x_y)))) +
         geom_abline() +
         ylim(0,1) +
         xlim(0,1) +
@@ -112,7 +115,19 @@ name_data = unique(df_AMR$Data)
         ylab(paste0("% resistance ", data)) +
         theme_bw() +
         theme_opts
-        
+   
+    pb = ggplot(data = x_y) +
+      geom_histogram(aes(p.y-p.x), fill = '#7fcdbb', binwidth = 0.01) +
+      geom_text(aes(x = max(p.y-p.x)/2, y = nrow(x_y)/10, label = paste0("Mean difference:\n",
+                                                                         round(mean(p.y-p.x), 4)))) +
+      geom_vline(xintercept = 0) +
+      xlab("Absolute difference") +
+      ylab("Count") +
+      theme_bw() +
+      theme_opts
+    
+    plot_grid(pa, pb, nrow = 1)
+    
     ggsave(here("plots", paste0("agreement_GLASS_vs_", data, ".png")))
   }
   
@@ -122,8 +137,43 @@ name_data = unique(df_AMR$Data)
 
 ##### GLASS vs datasets combined #####
 
+  y = df_AMR %>%
+    filter(Data != "GLASS") %>%
+    group_by(Country, Year, Pathogen, Antibiotic) %>%
+    summarise(Total = sum(Total),
+              Resistant = sum(Resistant)) %>%
+    mutate(Data = "All",
+           p = Resistant/Total)
   
-
+  
+  x_y <- merge(x, y, by = c('Country', 'Year', 'Pathogen', 'Antibiotic'))
+  
+  pa = ggplot(data = x_y) +
+    geom_point(aes(x = p.x, y = p.y), size = 3, color = '#7fcdbb') +
+    geom_text(aes(x = 0.25, y = 0.8, label = paste0("Number of points:\n",
+                                                    nrow(x_y)))) +
+    geom_abline() +
+    ylim(0,1) +
+    xlim(0,1) +
+    xlab("% resistance GLASS") +
+    ylab("% resistance ALL") +
+    theme_bw() +
+    theme_opts
+  
+  pb = ggplot(data = x_y) +
+    geom_histogram(aes(p.y-p.x), fill = '#7fcdbb', binwidth = 0.01) +
+    geom_text(aes(x = max(p.y-p.x)/2, y = nrow(x_y)/10, label = paste0("Mean difference:\n",
+                                                            round(mean(p.y-p.x), 4)))) +
+    geom_vline(xintercept = 0) +
+    xlab("Absolute difference") +
+    ylab("Count") +
+    theme_bw() +
+    theme_opts
+  
+  plot_grid(pa, pb, nrow = 1)
+  
+  ggsave(here("plots", paste0("agreement_GLASS_vs_ALL.png")))
+  
 
 #####
 
