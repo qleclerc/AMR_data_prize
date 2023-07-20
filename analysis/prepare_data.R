@@ -13,6 +13,8 @@ library(tidyr)
 library(readxl) #to read excel files
 library(tidyverse) # str_replace_all()
 library(here)
+library(AMR)
+library(reshape2)
 
 ################################################################################
 ########################### Load AMR datasets ##################################
@@ -40,14 +42,14 @@ df_GLASS <- read.csv("https://raw.githubusercontent.com/qleclerc/GLASS2022/maste
   
   #Bacterial species 
     #E. coli & K. pneumoniae --> not in DREAM and SOARE
-    bacteria_of_interest = c("E. coli", "Escherichia coli", "K. pneumoniae", "Klebsiella pneumoniae")
+    bacteria_of_interest = as.mo(c("E. coli", "K. pneumoniae"))
   
   #Antibiotics tested
     #TO DO: !! WE HAVE TO CHOOSE WHICH MOLECULES !!
     #TO DO: !! WE HAVE TO CHOOSE ALGORITHM TO CHOOSE RESISTANCE IN ONE CLASS !!
     #ESBL (3GC) and carbapenems (CBP)
-    molecules_ESBL = c('Ceftazidime', 'Ceftriaxone')
-    molecules_CBP = c('Imipenem', 'Meropenem')
+    molecules_ESBL = as.ab(c('Ceftazidime', 'Ceftriaxone'))
+    molecules_CBP = as.ab(c('Imipenem', 'Meropenem'))
   
   #Resistance status to antibiotics
     #number of R isolates
@@ -64,12 +66,25 @@ df_GLASS <- read.csv("https://raw.githubusercontent.com/qleclerc/GLASS2022/maste
 
 #### ATLAS ####
   colnames(df_ATLAS)
-  df_ATLAS_2 <- df_ATLAS[,c("Country", "Year", "Species", paste0(molecules_ESBL, "_I"), paste0(molecules_CBP, "_I"))]
+  df_ATLAS_2 = df_ATLAS[,-c(104:126)]
+  df_ATLAS_2 <- df_ATLAS_2[,c(grep(pattern = "_I", colnames(df_ATLAS_2), invert=T))]
+  df_ATLAS_2 <- df_ATLAS_2[,c(5,12,3,14:ncol(df_ATLAS_2))]
+  colnames(df_ATLAS_2)[-c(1:3)] = as.ab(colnames(df_ATLAS_2)[-c(1:3)])
+  df_ATLAS_2$Species = as.mo(df_ATLAS_2$Species)
+  
+  #get antibiotics
+  df_ATLAS_2 <- df_ATLAS_2[,c(colnames(df_ATLAS_2)[1:3], molecules_CBP, molecules_ESBL)]
   #get bacteria
   unique(df_ATLAS_2$Species)
   df_ATLAS_2 <- df_ATLAS_2 %>% filter(Species %in% bacteria_of_interest)
   #get years
   df_ATLAS_2 <- df_ATLAS_2 %>% filter(Year %in% years_of_interest)
+  
+  #format resistances
+  df_ATLAS_2 = df_ATLAS_2 %>%
+    mutate_at(all_of(c(molecules_CBP,molecules_ESBL)), as.mic)
+  df_ATLAS_2 = df_ATLAS_2 %>%
+    mutate_if(is.mic, as.sir, mo = .$Species)
   
   #INFOS: MIC and resistance status
   #no data for ceftriaxone for 2018-2019
@@ -77,12 +92,26 @@ df_GLASS <- read.csv("https://raw.githubusercontent.com/qleclerc/GLASS2022/maste
   
 #### GEARS ####
   colnames(df_GEARS)
-  df_GEARS_2 <- df_GEARS[,c("Country", "Year", "Organism", "CAZ_MIC", "IPM_MIC", "MEM_MIC")]
+  df_GEARS_2 <- df_GEARS[,c(6,2,3,11:ncol(df_GEARS))]
+  colnames(df_GEARS_2)[colnames(df_GEARS_2)=="C_MIC"] = "CZT_MIC"
+  colnames(df_GEARS_2)[-c(1:3)] = as.ab(colnames(df_GEARS_2)[-c(1:3)])
+  df_GEARS_2$Organism = as.mo(df_GEARS_2$Organism)
+  
+  #get antibiotics
+  df_GEARS_2 <- df_GEARS_2[,c(1:3, which(colnames(df_GEARS_2) %in% c(molecules_CBP, molecules_ESBL)))]
   #get bacteria
   unique(df_GEARS_2$Organism)
   df_GEARS_2 <- df_GEARS_2 %>% filter(Organism %in% bacteria_of_interest)
   #get years
   df_GEARS_2 <- df_GEARS_2 %>% filter(Year %in% years_of_interest)
+  
+  #format resistances
+  df_GEARS_2 = df_GEARS_2 %>%
+    mutate_at(vars(-Country, -Year, -Organism), as.numeric) %>%
+    mutate_at(vars(-Country, -Year, -Organism), round, digits = 3) %>%
+    mutate_at(vars(-Country, -Year, -Organism), as.mic)
+  df_GEARS_2 = df_GEARS_2 %>%
+    mutate_if(is.mic, as.sir, mo = .$Organism)
   
   #INFOS: MIC data
   #TO DO: convert to resistance status
@@ -95,12 +124,49 @@ df_GLASS <- read.csv("https://raw.githubusercontent.com/qleclerc/GLASS2022/maste
   
 #### KEYSTONE ####
   colnames(df_KEYSTONE)
-  df_KEYSTONE_2 <- df_KEYSTONE[,c("Country", "Study Year", "Organism", molecules_ESBL, molecules_CBP[1])]
+  df_KEYSTONE_2 <- df_KEYSTONE[,c(34, 2, 3, c(4:32))]
+  colnames(df_KEYSTONE_2)[-c(1:3)] = as.ab(colnames(df_KEYSTONE_2)[-c(1:3)])
+  df_KEYSTONE_2$Organism = as.mo(df_KEYSTONE_2$Organism)
+  
+  #get antibiotics
+  df_KEYSTONE_2 <- df_KEYSTONE_2[,c(1:3, which(colnames(df_KEYSTONE_2) %in% c(molecules_CBP, molecules_ESBL)))]
   #get bacteria
   unique(df_KEYSTONE_2$Organism)
   df_KEYSTONE_2 <- df_KEYSTONE_2 %>% filter(Organism %in% bacteria_of_interest)
   #get years
   df_KEYSTONE_2 <- df_KEYSTONE_2 %>% filter(`Study Year` %in% years_of_interest)
+  
+  #format resistances
+  df_KEYSTONE_2 = df_KEYSTONE_2 %>%
+    mutate_if(is.logical, as.numeric)
+  
+  df_KEYSTONE_2 = df_KEYSTONE_2 %>%
+    mutate_at(colnames(df_KEYSTONE_2)[
+      (sapply(colnames(df_KEYSTONE_2), nchar) == 3) &
+        (sapply(sapply(df_KEYSTONE_2, class),"[[",1) == "character")], as.mic)
+  
+  df_KEYSTONE_2 = df_KEYSTONE_2 %>%
+    mutate_at(colnames(df_KEYSTONE_2)[
+      (sapply(colnames(df_KEYSTONE_2), nchar) == 3) &
+        (sapply(sapply(df_KEYSTONE_2, class),"[[",1) != "mic")], as.character)
+  
+  df_KEYSTONE_2 = df_KEYSTONE_2 %>%
+    mutate_at(colnames(df_KEYSTONE_2)[
+      (sapply(colnames(df_KEYSTONE_2), nchar) == 3) &
+        (sapply(sapply(df_KEYSTONE_2, class),"[[",1) == "character")], ~replace(., . == "0", "S"))
+  
+  df_KEYSTONE_2 = df_KEYSTONE_2 %>%
+    mutate_at(colnames(df_KEYSTONE_2)[
+      (sapply(colnames(df_KEYSTONE_2), nchar) == 3) &
+        (sapply(sapply(df_KEYSTONE_2, class),"[[",1) == "character")], ~replace(., . == "1", "R"))
+  
+  df_KEYSTONE_2 = df_KEYSTONE_2 %>%
+      mutate_at(colnames(df_KEYSTONE_2)[
+        (sapply(colnames(df_KEYSTONE_2), nchar) == 3) &
+          (sapply(sapply(df_KEYSTONE_2, class),"[[",1) != "mic")], as.sir)
+      
+  df_KEYSTONE_2 = df_KEYSTONE_2 %>%
+    mutate_if(is.mic, as.sir, mo = .$Organism)
   
   #INFOS: MIC data
   #no data for meropenem
@@ -110,12 +176,28 @@ df_GLASS <- read.csv("https://raw.githubusercontent.com/qleclerc/GLASS2022/maste
 
 #### SIDERO ####
   colnames(df_SIDERO)
-  df_SIDERO_2 <- df_SIDERO[,c("Country", "Year Collected", "Organism Name", "Ceftazidime/ Avibactam", "Imipenem/ Relebactam", molecules_CBP[2])]
+  df_SIDERO_2 <- df_SIDERO[,c(3,5,1,7:20)]
+  df_SIDERO_2 = df_SIDERO_2 %>% select(-"Meropenem/ Vaborbactam at 8")
+  colnames(df_SIDERO_2) = sapply(colnames(df_SIDERO_2), function(x) unlist(strsplit(x, "/"))[[1]])
+  colnames(df_SIDERO_2)[-c(1:3)] = as.ab(colnames(df_SIDERO_2)[-c(1:3)])
+  df_SIDERO_2$`Organism Name` = as.mo(df_SIDERO_2$`Organism Name`)
+  
+  #get antibiotics
+  df_SIDERO_2 <- df_SIDERO_2[,c(1:3, which(colnames(df_SIDERO_2) %in% c(molecules_CBP, molecules_ESBL)))]
   #get bacteria
   unique(df_SIDERO_2$`Organism Name`)
   df_SIDERO_2 <- df_SIDERO_2 %>% filter(`Organism Name` %in% bacteria_of_interest)
   #get years
   df_SIDERO_2 <- df_SIDERO_2 %>% filter(`Year Collected` %in% years_of_interest)
+  
+  #format resistances
+  df_SIDERO_2 = df_SIDERO_2 %>%
+    mutate_at(vars(-Country, -`Year Collected`, -`Organism Name`), as.numeric) %>%
+    mutate_at(vars(-Country, -`Year Collected`, -`Organism Name`), round, digits = 3) %>%
+    mutate_at(vars(-Country, -`Year Collected`, -`Organism Name`), as.mic)
+  
+  df_SIDERO_2 = df_SIDERO_2 %>%
+    mutate_if(is.mic, as.sir, mo = .$`Organism Name`)
   
   #Infos: MIC data
   #TO DO: convert to resistance status
@@ -126,144 +208,28 @@ df_GLASS <- read.csv("https://raw.githubusercontent.com/qleclerc/GLASS2022/maste
 
 #### GLASS ####
   colnames(df_GLASS)
+  #df_GLASS = df_GLASS %>% filter(Specimen == "BLOOD")
   df_GLASS_2 <- df_GLASS[,c("CountryTerritoryArea", "Year", "PathogenName", "AbTargets", "InterpretableAST", "Resistant")]
-  #get molecules
+  
+  #get antibiotics
   unique(df_GLASS_2$AbTargets)
+  df_GLASS_2$AbTargets = as.ab(df_GLASS_2$AbTargets)
   df_GLASS_2 <- df_GLASS_2 %>% filter(AbTargets %in% c(molecules_ESBL, molecules_CBP))
   #get bacteria
   unique(df_GLASS_2$PathogenName)
+  df_GLASS_2$PathogenName = as.mo(df_GLASS_2$PathogenName)
   df_GLASS_2 <- df_GLASS_2 %>% filter(PathogenName %in% bacteria_of_interest)
   #get years
   df_GLASS_2 <- df_GLASS_2 %>% filter(Year %in% years_of_interest)
   
+  df_GLASS_2 = df_GLASS_2 %>%
+    group_by(CountryTerritoryArea, Year, PathogenName, AbTargets) %>%
+    summarise(InterpretableAST = sum(InterpretableAST),
+              Resistant = sum(Resistant)) %>%
+    ungroup()
+  
   #INFOS: resistance status
-#####
-  
-################################################################################
-############## Compute Resistance status when only MIC available ###############
-################################################################################
 
-## TO DO for:
-  ## GEARS
-  ## KEYSTONE
-  ## SIDERO
-  ## ATLAS (for NonResistant status)
-  
-## Get thresholds - here EUCAST in mg/L (E. coli and K. pneumoniae the same)
-  t_ceftazidime = 4
-  t_ceftriaxone = 2
-  t_imipenem = 4
-  t_meropenem = 8
-  
-## Get S, I or R status based on thresholds (name of column like ATLAS)
-  
-## GEARS
-  colnames(df_GEARS_2)
-  summary(df_GEARS_2)
-  
-  df_GEARS_2$Ceftazidime_I <- ifelse((is.na(df_GEARS_2$CAZ_MIC) | df_GEARS_2$CAZ_MIC == "-"),
-                                   NA,
-                                   ifelse(df_GEARS_2$CAZ_MIC > t_ceftazidime,
-                                          'Resistant',
-                                          'NonResistant')
-                                    )
-  
-  df_GEARS_2$Imipenem_I <- ifelse((is.na(df_GEARS_2$IPM_MIC) | df_GEARS_2$IPM_MIC == "-"),
-                                  NA,
-                                  ifelse(df_GEARS_2$IPM_MIC > t_imipenem,
-                                         "Resistant",
-                                         "NonResistant")
-                                  )
-  
-  df_GEARS_2$Meropenem_I <- ifelse((is.na(df_GEARS_2$MEM_MIC) | df_GEARS_2$MEM_MIC == "-"),
-                                     NA,
-                                     ifelse(df_GEARS_2$MEM_MIC > t_meropenem,
-                                                'Resistant',
-                                                'NonResistant')
-                                     )
-  #get rid of MIC data
-  df_GEARS_2 <- df_GEARS_2 %>%
-    select(!c("CAZ_MIC", "IPM_MIC", "MEM_MIC"))
-
-## KEYSTONE  
-  colnames(df_KEYSTONE_2)
-  summary(df_KEYSTONE_2)
-  # summary(as.factor(df_KEYSTONE_2$Imipenem))
-  
-  df_KEYSTONE_2$Ceftazidime_I <- ifelse(is.na(df_KEYSTONE_2$Ceftazidime),
-                                          NA,
-                                          ifelse(df_KEYSTONE_2$Ceftazidime == 'TRUE',
-                                                 "Resistant",
-                                                 "NonResistant")
-                                          ) # TRUE OR FALSE ???????
-  
-  df_KEYSTONE_2$Ceftriaxone_I <- ifelse(is.na(df_KEYSTONE_2$Ceftriaxone),
-                                          NA, 
-                                          ifelse(df_KEYSTONE_2$Ceftriaxone == 'TRUE',
-                                                 "Resistant",
-                                                 "NonResistant")
-                                          ) # TRUE OR FALSE ???????
-
-  df_KEYSTONE_2$Imipenem_I <- ifelse(is.na(df_KEYSTONE_2$Imipenem),
-                                       NA, ifelse(df_KEYSTONE_2$Imipenem == '≤0.12',
-                                                  'NonResistant', ifelse(df_KEYSTONE_2$Imipenem == '>8',
-                                                                         'Resistant', ifelse(as.numeric(df_KEYSTONE_2$Imipenem) > t_imipenem,
-                                                                                             'Resistant',
-                                                                                             'NonResistant')
-                                                  )
-                                            )
-                                      )
-  #get rid of MIC data
-  df_KEYSTONE_2 <- df_KEYSTONE_2 %>%
-    select(!c("Ceftazidime", "Ceftriaxone", "Imipenem"))
-
-## SIDERO
-  colnames(df_SIDERO_2)
-  summary(df_SIDERO_2)
-  # summary(as.factor(df_SIDERO_2$`Imipenem/ Relebactam`))
-  
-  df_SIDERO_2$Ceftazidime_I <- ifelse(is.na(df_SIDERO_2$`Ceftazidime/ Avibactam`),
-                                      NA, ifelse(df_SIDERO_2$`Ceftazidime/ Avibactam` > t_ceftazidime,
-                                                 "Resistant",
-                                                 "NonResistant")
-                                      )
-  
-  df_SIDERO_2$Imipenem_I <- ifelse(is.na(df_SIDERO_2$`Imipenem/ Relebactam`) |  df_SIDERO_2$`Imipenem/ Relebactam` == 'NULL',
-                                   NA, ifelse(as.numeric(df_SIDERO_2$`Imipenem/ Relebactam`) > t_imipenem,
-                                             "Resistant",
-                                             "NonResistant")
-  )
-  
-  df_SIDERO_2$Meropenem_I <- ifelse(is.na(df_SIDERO_2$Meropenem),
-                                       NA, ifelse(df_SIDERO_2$Meropenem > t_meropenem,
-                                                  "Resistant",
-                                                  "NonResistant")
-                                    )
-  #get rid of MIC data
-  df_SIDERO_2 <- df_SIDERO_2 %>%
-    select(!c("Ceftazidime/ Avibactam", "Imipenem/ Relebactam", "Meropenem"))
-  
-## ATLAS
-  colnames(df_ATLAS_2)
-  summary(df_ATLAS_2)
-  
-  df_ATLAS_2$Ceftazidime_I <- ifelse(df_ATLAS_2$Ceftazidime_I == 'Intermediate' | df_ATLAS_2$Ceftazidime_I == 'Susceptible',
-                                     'NonResistant',
-                                     df_ATLAS_2$Ceftazidime_I)
-  
-  df_ATLAS_2$Ceftriaxone_I <- ifelse(df_ATLAS_2$Ceftriaxone_I == 'Intermediate' | df_ATLAS_2$Ceftriaxone_I == 'Susceptible',
-                                     'NonResistant',
-                                     df_ATLAS_2$Ceftriaxone_I)
-
-  df_ATLAS_2$Imipenem_I <- ifelse(df_ATLAS_2$Imipenem_I == 'Intermediate' | df_ATLAS_2$Imipenem_I == 'Susceptible',
-                                  'NonResistant',
-                                  df_ATLAS_2$Imipenem_I)
-  
-  df_ATLAS_2$Meropenem_I <- ifelse(df_ATLAS_2$Meropenem_I == 'Intermediate' | df_ATLAS_2$Meropenem_I == 'Susceptible',
-                                   'NonResistant',
-                                   df_ATLAS_2$Meropenem_I)
-
-  
 ################################################################################
 ####### Compute total and R isolates by country/year/bacteria/antibiotic #######
 ################################################################################
@@ -273,281 +239,142 @@ df_GLASS <- read.csv("https://raw.githubusercontent.com/qleclerc/GLASS2022/maste
   
 #### ATLAS ####
   
-  ## Ceftazidime
-    
-    #count isolates by country, year, species
-    df_ATLAS_2_Ceftazidime <- df_ATLAS_2 %>%
-      group_by(Country, Year, Species, .drop = FALSE) %>% #.drop = FALSE to include 0 counts in the table
-      filter(!is.na(Ceftazidime_I)) %>% #get rid of isolates not tested against the molecule
-      dplyr::count(Ceftazidime_I) %>%
-      filter(Ceftazidime_I == 'Resistant' | Ceftazidime_I == 'NonResistant')
-    #spread for antibiotic
-    df_ATLAS_2_Ceftazidime <- spread(df_ATLAS_2_Ceftazidime, key = Ceftazidime_I, value = n)
-    #antibiotic
-    df_ATLAS_2_Ceftazidime$Antibiotic <- 'Ceftazidime'
-    #total isolates
-    df_ATLAS_2_Ceftazidime$Total <- rowSums(df_ATLAS_2_Ceftazidime[, c("NonResistant", "Resistant")], na.rm = T)
-    #get in order
-    df_ATLAS_2_Ceftazidime <- df_ATLAS_2_Ceftazidime[,c("Country", "Year", "Species", "Antibiotic", "Total", "Resistant")]
-    #name
-    colnames(df_ATLAS_2_Ceftazidime) <- final_column_names
-    
-  ## Imipenem
-    
-    #count isolates by country, year, species
-    df_ATLAS_2_Imipenem <- df_ATLAS_2 %>%
-      group_by(Country, Year, Species, .drop = FALSE) %>% #.drop = FALSE to include 0 counts in the table
-      filter(!is.na(Imipenem_I)) %>% #get rid of isolates not tested against the molecule
-      dplyr::count(Imipenem_I) %>%
-      filter(Imipenem_I == 'Resistant' | Imipenem_I == 'NonResistant')
-    #spread for antibiotic
-    df_ATLAS_2_Imipenem <- spread(df_ATLAS_2_Imipenem, key = Imipenem_I, value = n)
-    #antibiotic
-    df_ATLAS_2_Imipenem$Antibiotic <- 'Imipenem'
-    #total isolates
-    df_ATLAS_2_Imipenem$Total <- rowSums(df_ATLAS_2_Imipenem[, c("NonResistant", "Resistant")], na.rm = T)
-    #get in order
-    df_ATLAS_2_Imipenem <- df_ATLAS_2_Imipenem[,c("Country", "Year", "Species", "Antibiotic", "Total", "Resistant")]
-    #name
-    colnames(df_ATLAS_2_Imipenem) <- final_column_names
-    
-  ## Meropenem
-    
-    #count isolates by country, year, species
-    df_ATLAS_2_Meropenem <- df_ATLAS_2 %>%
-      group_by(Country, Year, Species, .drop = FALSE ) %>% #.drop = FALSE to include 0 counts in the table
-      filter(!is.na(Meropenem_I)) %>% #get rid of isolates not tested against the molecule
-      dplyr::count(Meropenem_I) %>%
-      filter(Meropenem_I == 'Resistant' | Meropenem_I == 'NonResistant')
-    #spread for antibiotic
-    df_ATLAS_2_Meropenem <- spread(df_ATLAS_2_Meropenem, key = Meropenem_I, value = n)
-    #antibiotic
-    df_ATLAS_2_Meropenem$Antibiotic <- 'Meropenem'
-    #total isolates
-    df_ATLAS_2_Meropenem$Total <- rowSums(df_ATLAS_2_Meropenem[, c("NonResistant", "Resistant")], na.rm = T)
-    #get in order
-    df_ATLAS_2_Meropenem <- df_ATLAS_2_Meropenem[,c("Country", "Year", "Species", "Antibiotic", "Total", "Resistant")]
-    #name
-    colnames(df_ATLAS_2_Meropenem) <- final_column_names
-    
-  ## Merge molecules
-    df_ATLAS_2_final <- rbind(df_ATLAS_2_Ceftazidime, df_ATLAS_2_Imipenem, df_ATLAS_2_Meropenem)
-    
-  ## Make NA into 0s
-    df_ATLAS_2_final$Resistant <- ifelse(is.na(df_ATLAS_2_final$Resistant),
-                                         0,
-                                         df_ATLAS_2_final$Resistant) #OK ????
-    
+  df_ATLAS_3 = df_ATLAS_2 %>%
+    mutate(Cephalosporins = "S") %>%
+    mutate(Cephalosporins = replace(Cephalosporins, IPM == "R" | MEM == "R", "R")) %>%
+    mutate(Cephalosporins = replace(Cephalosporins, is.na(IPM)&is.na(MEM), NA)) %>%
+    mutate(Carbapenems = "S") %>%
+    mutate(Carbapenems = replace(Carbapenems, CAZ == "R" | CRO == "R", "R")) %>%
+    mutate(Carbapenems = replace(Carbapenems, is.na(CAZ)&is.na(CRO), NA)) %>%
+    melt(id.vars = c("Country", "Year", "Species")) %>%
+    mutate(value = as.sir(value)) %>%
+    filter(!is.na(value)) %>%
+    group_by(Country, Year, Species, variable, .drop = FALSE) %>%
+    summarise(Total = n(), Resistant = count_resistant(value)) %>%
+    ungroup %>%
+    rename(Pathogen = Species,
+           Antibiotic = variable) %>%
+    select(all_of(final_column_names))
+  
   ## Add dataset name
-    df_ATLAS_2_final$Data <- 'ATLAS'
+  df_ATLAS_3$Data <- 'ATLAS'
 
 #####
 
 ##### GEARS ####
     
-  ## Ceftazidime
-    
-    #count isolates by country, year, species
-    df_GEARS_2_Ceftazidime <- df_GEARS_2 %>%
-      group_by(Country, Year, Organism, .drop = FALSE) %>% #.drop = FALSE to include 0 counts in the table
-      filter(!is.na(Ceftazidime_I)) %>% #get rid of isolates not tested against the molecule
-      dplyr::count(Ceftazidime_I) %>%
-      filter(Ceftazidime_I == 'Resistant' | Ceftazidime_I == 'NonResistant')
-    #spread for antibiotic
-    df_GEARS_2_Ceftazidime <- spread(df_GEARS_2_Ceftazidime, key = Ceftazidime_I, value = n)
-    #antibiotic
-    df_GEARS_2_Ceftazidime$Antibiotic <- 'Ceftazidime'
-    #total isolates
-    df_GEARS_2_Ceftazidime$Total <- rowSums(df_GEARS_2_Ceftazidime[, c("NonResistant", "Resistant")], na.rm = T)
-    #get in order
-    df_GEARS_2_Ceftazidime <- df_GEARS_2_Ceftazidime[,c("Country", "Year", "Organism", "Antibiotic", "Total", "Resistant")]
-    #name
-    colnames(df_GEARS_2_Ceftazidime) <- final_column_names
-    
-  ## Meropenem
-    
-    #count isolates by country, year, species
-    df_GEARS_2_Meropenem <- df_GEARS_2 %>%
-      group_by(Country, Year, Organism, .drop = FALSE ) %>% #.drop = FALSE to include 0 counts in the table
-      filter(!is.na(Meropenem_I)) %>% #get rid of isolates not tested against the molecule
-      dplyr::count(Meropenem_I) %>%
-      filter(Meropenem_I == 'Resistant' | Meropenem_I == 'NonResistant')
-    #spread for antibiotic
-    df_GEARS_2_Meropenem <- spread(df_GEARS_2_Meropenem, key = Meropenem_I, value = n)
-    #antibiotic
-    df_GEARS_2_Meropenem$Antibiotic <- 'Meropenem'
-    #total isolates
-    df_GEARS_2_Meropenem$Total <- rowSums(df_GEARS_2_Meropenem[, c("NonResistant", "Resistant")], na.rm = T)
-    #get in order
-    df_GEARS_2_Meropenem <- df_GEARS_2_Meropenem[,c("Country", "Year", "Organism", "Antibiotic", "Total", "Resistant")]
-    #name
-    colnames(df_GEARS_2_Meropenem) <- final_column_names
-    
-    ## Merge molecules
-    df_GEARS_2_final <- rbind(df_GEARS_2_Ceftazidime, df_GEARS_2_Meropenem)
-    
-    ## Make NA into 0s
-    df_GEARS_2_final$Resistant <- ifelse(is.na(df_GEARS_2_final$Resistant),
-                                         0,
-                                         df_GEARS_2_final$Resistant) #OK ????
-    
+  df_GEARS_3 = df_GEARS_2 %>%
+    mutate(Cephalosporins = "S") %>%
+    mutate(Cephalosporins = replace(Cephalosporins, IPM == "R" | MEM == "R", "R")) %>%
+    mutate(Cephalosporins = replace(Cephalosporins, is.na(IPM)&is.na(MEM), NA)) %>%
+    mutate(Carbapenems = "S") %>%
+    mutate(Carbapenems = replace(Carbapenems, CAZ == "R", "R")) %>%
+    mutate(Carbapenems = replace(Carbapenems, is.na(CAZ), NA)) %>%
+    melt(id.vars = c("Country", "Year", "Organism")) %>%
+    mutate(value = as.sir(value)) %>%
+    filter(!is.na(value)) %>%
+    group_by(Country, Year, Organism, variable, .drop = FALSE) %>%
+    summarise(Total = n(), Resistant = count_resistant(value)) %>%
+    ungroup %>%
+    rename(Pathogen = Organism,
+           Antibiotic = variable) %>%
+    select(all_of(final_column_names))
+  
     ## Add dataset name
-    df_GEARS_2_final$Data <- 'GEARS'
+  df_GEARS_3$Data <- 'GEARS'
     
 #####
     
 #### KEYSTONE ####
     
-  ## Ceftazidime
-    
-    #count isolates by country, year, species
-    df_KEYSTONE_2_Ceftazidime <- df_KEYSTONE_2 %>%
-      group_by(Country, `Study Year`, Organism, .drop = FALSE) %>% #.drop = FALSE to include 0 counts in the table
-      filter(!is.na(Ceftazidime_I)) %>% #get rid of isolates not tested against the molecule
-      dplyr::count(Ceftazidime_I) %>%
-      filter(Ceftazidime_I == 'Resistant' | Ceftazidime_I == 'NonResistant')
-    #spread for antibiotic
-    df_KEYSTONE_2_Ceftazidime <- spread(df_KEYSTONE_2_Ceftazidime, key = Ceftazidime_I, value = n)
-    #antibiotic
-    df_KEYSTONE_2_Ceftazidime$Antibiotic <- 'Ceftazidime'
-    #total isolates
-    df_KEYSTONE_2_Ceftazidime$Total <- rowSums(df_KEYSTONE_2_Ceftazidime[, c("NonResistant", "Resistant")], na.rm = T)
-    #get in order
-    df_KEYSTONE_2_Ceftazidime <- df_KEYSTONE_2_Ceftazidime[,c("Country", "Study Year", "Organism", "Antibiotic", "Total", "Resistant")]
-    #name
-    colnames(df_KEYSTONE_2_Ceftazidime) <- final_column_names
-    
-  ## Ceftriaxone
-    
-    #count isolates by country, year, species
-    df_KEYSTONE_2_Ceftriaxone <- df_KEYSTONE_2 %>%
-      group_by(Country, `Study Year`, Organism, .drop = FALSE) %>% #.drop = FALSE to include 0 counts in the table
-      filter(!is.na(Ceftriaxone_I)) %>% #get rid of isolates not tested against the molecule
-      dplyr::count(Ceftriaxone_I) %>%
-      filter(Ceftriaxone_I == 'Resistant' | Ceftriaxone_I == 'NonResistant')
-    #spread for antibiotic
-    df_KEYSTONE_2_Ceftriaxone <- spread(df_KEYSTONE_2_Ceftriaxone, key = Ceftriaxone_I, value = n)
-    #antibiotic
-    df_KEYSTONE_2_Ceftriaxone$Antibiotic <- 'Ceftriaxone'
-    #total isolates
-    df_KEYSTONE_2_Ceftriaxone$Total <- rowSums(df_KEYSTONE_2_Ceftriaxone[, c("NonResistant", "Resistant")], na.rm = T)
-    #get in order
-    df_KEYSTONE_2_Ceftriaxone <- df_KEYSTONE_2_Ceftriaxone[,c("Country", "Study Year", "Organism", "Antibiotic", "Total", "Resistant")]
-    #name
-    colnames(df_KEYSTONE_2_Ceftriaxone) <- final_column_names
-    
-  ## Imipenem
-    
-    #count isolates by country, year, species
-    df_KEYSTONE_2_Imipenem <- df_KEYSTONE_2 %>%
-      group_by(Country, `Study Year`, Organism, .drop = FALSE) %>% #.drop = FALSE to include 0 counts in the table
-      filter(!is.na(Imipenem_I)) %>% #get rid of isolates not tested against the molecule
-      dplyr::count(Imipenem_I) %>%
-      filter(Imipenem_I == 'Resistant' | Imipenem_I == 'NonResistant')
-    #spread for antibiotic
-    df_KEYSTONE_2_Imipenem <- spread(df_KEYSTONE_2_Imipenem, key = Imipenem_I, value = n)
-    #antibiotic
-    df_KEYSTONE_2_Imipenem$Antibiotic <- 'Imipenem'
-    #total isolates
-    df_KEYSTONE_2_Imipenem$Total <- rowSums(df_KEYSTONE_2_Imipenem[, c("NonResistant", "Resistant")], na.rm = T)
-    #get in order
-    df_KEYSTONE_2_Imipenem <- df_KEYSTONE_2_Imipenem[,c("Country", "Study Year", "Organism", "Antibiotic", "Total", "Resistant")]
-    #name
-    colnames(df_KEYSTONE_2_Imipenem) <- final_column_names
-    
-    ## Merge molecules
-    df_KEYSTONE_2_final <- rbind(df_KEYSTONE_2_Ceftazidime, df_KEYSTONE_2_Ceftriaxone, df_KEYSTONE_2_Imipenem)
-    
-    ## Make NA into 0s
-    df_KEYSTONE_2_final$Resistant <- ifelse(is.na(df_KEYSTONE_2_final$Resistant),
-                                           0,
-                                           df_KEYSTONE_2_final$Resistant) #OK ????
-    
+  df_KEYSTONE_3 = df_KEYSTONE_2 %>%
+    mutate(Cephalosporins = "S") %>%
+    mutate(Cephalosporins = replace(Cephalosporins, IPM == "R", "R")) %>%
+    mutate(Cephalosporins = replace(Cephalosporins, is.na(IPM), NA)) %>%
+    mutate(Carbapenems = "S") %>%
+    mutate(Carbapenems = replace(Carbapenems, CAZ == "R" | CRO == "R", "R")) %>%
+    mutate(Carbapenems = replace(Carbapenems, is.na(CAZ)&is.na(CRO), NA)) %>%
+    melt(id.vars = c("Country", "Study Year", "Organism")) %>%
+    mutate(value = as.sir(value)) %>%
+    filter(!is.na(value)) %>%
+    group_by(Country, `Study Year`, Organism, variable, .drop = FALSE) %>%
+    summarise(Total = n(), Resistant = count_resistant(value)) %>%
+    ungroup %>%
+    rename(Pathogen = Organism,
+           Antibiotic = variable,
+           Year = `Study Year`) %>%
+    select(all_of(final_column_names))
+  
     ## Add dataset name
-    df_KEYSTONE_2_final$Data <- 'KEYSTONE'
+  df_KEYSTONE_3$Data <- 'KEYSTONE'
     
 #####
  
 #### SIDERO ####
     
-  ## Ceftazidime
-    
-    #count isolates by country, year, species
-    df_SIDERO_2_Ceftazidime <- df_SIDERO_2 %>%
-      group_by(Country, `Year Collected`, `Organism Name`, .drop = FALSE) %>% #.drop = FALSE to include 0 counts in the table
-      filter(!is.na(Ceftazidime_I)) %>% #get rid of isolates not tested against the molecule
-      dplyr::count(Ceftazidime_I) %>%
-      filter(Ceftazidime_I == 'Resistant' | Ceftazidime_I == 'NonResistant')
-    #spread for antibiotic
-    df_SIDERO_2_Ceftazidime <- spread(df_SIDERO_2_Ceftazidime, key = Ceftazidime_I, value = n)
-    #antibiotic
-    df_SIDERO_2_Ceftazidime$Antibiotic <- 'Ceftazidime'
-    #total isolates
-    df_SIDERO_2_Ceftazidime$Total <- rowSums(df_SIDERO_2_Ceftazidime[, c("NonResistant", "Resistant")], na.rm = T)
-    #get in order
-    df_SIDERO_2_Ceftazidime <- df_SIDERO_2_Ceftazidime[,c("Country", "Year Collected", "Organism Name", "Antibiotic", "Total", "Resistant")]
-    #name
-    colnames(df_SIDERO_2_Ceftazidime) <- final_column_names
-    
-  ## Imipenem
-    
-    #count isolates by country, year, species
-    df_SIDERO_2_Imipenem <- df_SIDERO_2 %>%
-      group_by(Country, `Year Collected`, `Organism Name`, .drop = FALSE) %>% #.drop = FALSE to include 0 counts in the table
-      filter(!is.na(Imipenem_I)) %>% #get rid of isolates not tested against the molecule
-      dplyr::count(Imipenem_I) %>%
-      filter(Imipenem_I == 'Resistant' | Imipenem_I == 'NonResistant')
-    #spread for antibiotic
-    df_SIDERO_2_Imipenem <- spread(df_SIDERO_2_Imipenem, key = Imipenem_I, value = n)
-    #antibiotic
-    df_SIDERO_2_Imipenem$Antibiotic <- 'Imipenem'
-    #total isolates
-    df_SIDERO_2_Imipenem$Total <- rowSums(df_SIDERO_2_Imipenem[, c("NonResistant", "Resistant")], na.rm = T)
-    #get in order
-    df_SIDERO_2_Imipenem <- df_SIDERO_2_Imipenem[,c("Country", "Year Collected", "Organism Name", "Antibiotic", "Total", "Resistant")]
-    #name
-    colnames(df_SIDERO_2_Imipenem) <- final_column_names
-    
-  ## Meropenem
-    
-    #count isolates by country, year, species
-    df_SIDERO_2_Meropenem <- df_SIDERO_2 %>%
-      group_by(Country, `Year Collected`, `Organism Name`, .drop = FALSE) %>% #.drop = FALSE to include 0 counts in the table
-      filter(!is.na(Meropenem_I)) %>% #get rid of isolates not tested against the molecule
-      dplyr::count(Meropenem_I) %>%
-      filter(Meropenem_I == 'Resistant' | Meropenem_I == 'NonResistant')
-    #spread for antibiotic
-    df_SIDERO_2_Meropenem <- spread(df_SIDERO_2_Meropenem, key = Meropenem_I, value = n)
-    #antibiotic
-    df_SIDERO_2_Meropenem$Antibiotic <- 'Meropenem'
-    #total isolates
-    df_SIDERO_2_Meropenem$Total <- rowSums(df_SIDERO_2_Meropenem[, c("NonResistant", "Resistant")], na.rm = T)
-    #get in order
-    df_SIDERO_2_Meropenem <- df_SIDERO_2_Meropenem[,c("Country", "Year Collected", "Organism Name", "Antibiotic", "Total", "Resistant")]
-    #name
-    colnames(df_SIDERO_2_Meropenem) <- final_column_names
-    
-    ## Merge molecules
-    df_SIDERO_2_final <- rbind(df_SIDERO_2_Ceftazidime, df_SIDERO_2_Imipenem, df_SIDERO_2_Meropenem)
-    
-    ## Make NA into 0s
-    df_SIDERO_2_final$Resistant <- ifelse(is.na(df_SIDERO_2_final$Resistant),
-                                          0,
-                                          df_SIDERO_2_final$Resistant) #OK ????
-    
+  df_SIDERO_3 = df_SIDERO_2 %>%
+    mutate(Cephalosporins = "S") %>%
+    mutate(Cephalosporins = replace(Cephalosporins, IPM == "R" | MEM == "R", "R")) %>%
+    mutate(Cephalosporins = replace(Cephalosporins, is.na(IPM)&is.na(MEM), NA)) %>%
+    mutate(Carbapenems = "S") %>%
+    mutate(Carbapenems = replace(Carbapenems, CAZ == "R", "R")) %>%
+    mutate(Carbapenems = replace(Carbapenems, is.na(CAZ), NA)) %>%
+    melt(id.vars = c("Country", "Year Collected", "Organism Name")) %>%
+    mutate(value = as.sir(value)) %>%
+    filter(!is.na(value)) %>%
+    group_by(Country, `Year Collected`, `Organism Name`, variable, .drop = FALSE) %>%
+    summarise(Total = n(), Resistant = count_resistant(value)) %>%
+    ungroup %>%
+    rename(Pathogen = `Organism Name`,
+           Antibiotic = variable,
+           Year = `Year Collected`) %>%
+    select(all_of(final_column_names))
+  
     ## Add dataset name
-    df_SIDERO_2_final$Data <- 'SIDERO'
+  df_SIDERO_3$Data <- 'SIDERO'
     
 #####  
      
 #### GLASS ####
-    
-  df_GLASS_2_final <- df_GLASS_2
+  
+  #for GLASS we take the average of the number of resistant and total isolates tested over the two molecules
+  
+  ##Cephalosporins
+  
+  molecule11 <- df_GLASS_2 %>% filter(AbTargets == as.ab('Ceftriaxone'))
+  molecule12 <- df_GLASS_2 %>% filter(AbTargets == as.ab('Ceftazidime'))
+  df_GLASS_2_ceph <- merge(molecule11, molecule12, by = c("CountryTerritoryArea", "Year", "PathogenName"), all = T)
+  
+  #new columns
+  df_GLASS_2_ceph$AbTargets <- "Cephalosporins"
+  df_GLASS_2_ceph$InterpretableAST <- rowMeans(df_GLASS_2_ceph[,c("InterpretableAST.x", "InterpretableAST.y")], na.rm = T)
+  df_GLASS_2_ceph$Resistant <- rowMeans(df_GLASS_2_ceph[,c("Resistant.x", "Resistant.y")], na.rm = T)
+  
+  #remove old molecules
+  df_GLASS_2_ceph <- df_GLASS_2_ceph %>% select(!(c("AbTargets.x", "InterpretableAST.x", "Resistant.x", "AbTargets.y", "InterpretableAST.y","Resistant.y")))
+  
+  ##Carbapenems
+  
+  molecule21 <- df_GLASS_2 %>% filter(AbTargets == as.ab('Imipenem'))
+  molecule22 <- df_GLASS_2 %>% filter(AbTargets == as.ab('Meropenem'))
+  df_GLASS_2_carb <- merge(molecule21, molecule22, by = c("CountryTerritoryArea", "Year", "PathogenName"), all = T)
+  
+  #new columns
+  df_GLASS_2_carb$AbTargets <- "Carbapenems"
+  df_GLASS_2_carb$InterpretableAST <- rowMeans(df_GLASS_2_carb[,c("InterpretableAST.x", "InterpretableAST.y")], na.rm = T)
+  df_GLASS_2_carb$Resistant <- rowMeans(df_GLASS_2_carb[,c("Resistant.x", "Resistant.y")], na.rm = T)
+  
+  #remove old molecules
+  df_GLASS_2_carb <- df_GLASS_2_carb %>% select(!(c("AbTargets.x", "InterpretableAST.x", "Resistant.x", "AbTargets.y", "InterpretableAST.y","Resistant.y")))
+  
+  ## Merge two classes
+  df_GLASS_3 <- rbind(df_GLASS_2_ceph, df_GLASS_2_carb, df_GLASS_2)
+  
   #name
-  colnames(df_GLASS_2_final) <- final_column_names
+  colnames(df_GLASS_3) <- final_column_names
   
   ## Add dataset name
-  df_GLASS_2_final$Data <- 'GLASS'
+  df_GLASS_3$Data <- 'GLASS'
   
 #####
 
@@ -557,11 +384,11 @@ df_GLASS <- read.csv("https://raw.githubusercontent.com/qleclerc/GLASS2022/maste
 
 ## Join all datasets
   
-  df_AMR <- rbind(df_GLASS_2_final,
-                  df_ATLAS_2_final,
-                  df_GEARS_2_final,
-                  df_KEYSTONE_2_final,
-                  df_SIDERO_2_final)
+  df_AMR <- rbind(df_GLASS_3,
+                  df_ATLAS_3,
+                  df_GEARS_3,
+                  df_KEYSTONE_3,
+                  df_SIDERO_3)
   
 ## Change countries names so they correspond between datasets
   unique(df_AMR$Country)
@@ -579,6 +406,10 @@ df_GLASS <- read.csv("https://raw.githubusercontent.com/qleclerc/GLASS2022/maste
   
   length(unique(df_AMR$Country))
   unique(df_AMR$Country)
+  
+  ## Restore nicer bacteria and antibiotic names
+  df_AMR$Antibiotic[nchar(df_AMR$Antibiotic) == 3] = ab_name(as.ab(df_AMR$Antibiotic[nchar(df_AMR$Antibiotic) == 3]))
+  df_AMR$Pathogen = mo_name(as.mo(df_AMR$Pathogen))
   
 ## Save it into csv 
   

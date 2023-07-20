@@ -96,13 +96,17 @@ name_data = unique(df_AMR$Data)
 
 ##### GLASS vs datasets individually #####
 
-  x = df_AMR[df_AMR$Data %in% c('GLASS'),]
+  # Currently, looking by class completely over or underestimates compared to GLASS
+  df_AMR_2 = df_AMR %>%
+    filter(!(Antibiotic %in% c("Cephalosporins", "Carbapenems")))
+  x = df_AMR_2[df_AMR_2$Data %in% c('GLASS'),]
   
   for(data in name_data){
     
-    y = df_AMR[df_AMR$Data %in% data,]
+    y = df_AMR_2[df_AMR_2$Data %in% data,]
     
-    x_y <- merge(x, y, by = c('Country', 'Year', 'Pathogen', 'Antibiotic'))
+    x_y <- merge(x, y, by = c('Country', 'Year', 'Pathogen', 'Antibiotic')) %>%
+      filter(!is.nan(p.y))
     
     pa = ggplot(data = x_y) +
         geom_point(aes(x = p.x, y = p.y), size = 3, color = '#7fcdbb') +
@@ -118,9 +122,13 @@ name_data = unique(df_AMR$Data)
    
     pb = ggplot(data = x_y) +
       geom_histogram(aes(p.y-p.x), fill = '#7fcdbb', binwidth = 0.01) +
+      geom_text(aes(x = max(p.y-p.x)/2, y = nrow(x_y)/5, label = paste0("Prop within +/- 0.1:\n",
+                                                                         round(sum(abs(p.y-p.x)<=0.1)/nrow(x_y), 4)))) +
       geom_text(aes(x = max(p.y-p.x)/2, y = nrow(x_y)/10, label = paste0("Mean difference:\n",
                                                                          round(mean(p.y-p.x), 4)))) +
       geom_vline(xintercept = 0) +
+      geom_vline(xintercept = 0.1, linetype = "dashed") +
+      geom_vline(xintercept = -0.1, linetype = "dashed") +
       xlab("Absolute difference") +
       ylab("Count") +
       theme_bw() +
@@ -137,7 +145,7 @@ name_data = unique(df_AMR$Data)
 
 ##### GLASS vs datasets combined #####
 
-  y = df_AMR %>%
+  y = df_AMR_2 %>%
     filter(Data != "GLASS") %>%
     group_by(Country, Year, Pathogen, Antibiotic) %>%
     summarise(Total = sum(Total),
@@ -146,7 +154,8 @@ name_data = unique(df_AMR$Data)
            p = Resistant/Total)
   
   
-  x_y <- merge(x, y, by = c('Country', 'Year', 'Pathogen', 'Antibiotic'))
+  x_y <- merge(x, y, by = c('Country', 'Year', 'Pathogen', 'Antibiotic')) %>%
+    filter(!is.nan(p.y))
   
   pa = ggplot(data = x_y) +
     geom_point(aes(x = p.x, y = p.y), size = 3, color = '#7fcdbb') +
@@ -162,9 +171,13 @@ name_data = unique(df_AMR$Data)
   
   pb = ggplot(data = x_y) +
     geom_histogram(aes(p.y-p.x), fill = '#7fcdbb', binwidth = 0.01) +
+    geom_text(aes(x = max(p.y-p.x)/2, y = nrow(x_y)/5, label = paste0("Prop within +/- 0.1:\n",
+                                                                      round(sum(abs(p.y-p.x)<=0.1)/nrow(x_y), 4)))) +
     geom_text(aes(x = max(p.y-p.x)/2, y = nrow(x_y)/10, label = paste0("Mean difference:\n",
                                                             round(mean(p.y-p.x), 4)))) +
     geom_vline(xintercept = 0) +
+    geom_vline(xintercept = 0.1, linetype = "dashed") +
+    geom_vline(xintercept = -0.1, linetype = "dashed") +
     xlab("Absolute difference") +
     ylab("Count") +
     theme_bw() +
