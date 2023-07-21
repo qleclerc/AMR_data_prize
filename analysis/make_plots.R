@@ -109,19 +109,22 @@ name_data = unique(df_AMR$Data)
       filter(!is.nan(p.y))
     
     pa = ggplot(data = x_y) +
-        geom_point(aes(x = p.x, y = p.y), size = 3, color = '#7fcdbb') +
-        geom_text(aes(x = 0.25, y = 0.8, label = paste0("Number of points:\n",
+        geom_point(aes(x = p.x, y = p.y, colour = Pathogen), size = 3) +
+        geom_text(aes(x = 0.25, y = 0.7, label = paste0("Comparisons:\n",
                                                         nrow(x_y)))) +
+        geom_text(aes(x = 0.25, y = 0.9, label = paste0("Data points:\n",
+                                                      sum(y$Total)))) +
         geom_abline() +
         ylim(0,1) +
         xlim(0,1) +
         xlab("% resistance GLASS") +
         ylab(paste0("% resistance ", data)) +
         theme_bw() +
-        theme_opts
+        theme_opts +
+        guides(colour = "none")
    
     pb = ggplot(data = x_y) +
-      geom_histogram(aes(p.y-p.x), fill = '#7fcdbb', binwidth = 0.01) +
+      geom_histogram(aes(p.y-p.x, fill = Pathogen), binwidth = 0.01) +
       geom_text(aes(x = max(p.y-p.x)/2, y = nrow(x_y)/5, label = paste0("Prop within +/- 0.1:\n",
                                                                          round(sum(abs(p.y-p.x)<=0.1)/nrow(x_y), 4)))) +
       geom_text(aes(x = max(p.y-p.x)/2, y = nrow(x_y)/10, label = paste0("Mean difference:\n",
@@ -129,11 +132,12 @@ name_data = unique(df_AMR$Data)
       geom_vline(xintercept = 0) +
       geom_vline(xintercept = 0.1, linetype = "dashed") +
       geom_vline(xintercept = -0.1, linetype = "dashed") +
-      xlab("Absolute difference") +
+      xlab("Resistance difference") +
       ylab("Count") +
       theme_bw() +
-      theme_opts
-    
+      theme_opts +
+      guides(fill = "none")
+      
     plot_grid(pa, pb, nrow = 1)
     
     ggsave(here("plots", paste0("agreement_GLASS_vs_", data, ".png")))
@@ -141,8 +145,6 @@ name_data = unique(df_AMR$Data)
   
 #####
   
-  #TO DO: GLASS TO GLASS problem because multiples sources of infections !!
-
 ##### GLASS vs datasets combined #####
 
   y = df_AMR_2 %>%
@@ -158,19 +160,23 @@ name_data = unique(df_AMR$Data)
     filter(!is.nan(p.y))
   
   pa = ggplot(data = x_y) +
-    geom_point(aes(x = p.x, y = p.y), size = 3, color = '#7fcdbb') +
-    geom_text(aes(x = 0.25, y = 0.8, label = paste0("Number of points:\n",
+    geom_point(aes(x = p.x, y = p.y, colour = Pathogen), size = 3) +
+    geom_point(aes(x = p.x, y = p.y, colour = Pathogen), size = 3) +
+    geom_text(aes(x = 0.25, y = 0.7, label = paste0("Comparisons:\n",
                                                     nrow(x_y)))) +
+    geom_text(aes(x = 0.25, y = 0.9, label = paste0("Data points:\n",
+                                                    sum(y$Total)))) +
     geom_abline() +
     ylim(0,1) +
     xlim(0,1) +
     xlab("% resistance GLASS") +
     ylab("% resistance ALL") +
     theme_bw() +
-    theme_opts
+    theme_opts +
+    guides(colour = "none")
   
   pb = ggplot(data = x_y) +
-    geom_histogram(aes(p.y-p.x), fill = '#7fcdbb', binwidth = 0.01) +
+    geom_histogram(aes(p.y-p.x, fill = Pathogen), binwidth = 0.01) +
     geom_text(aes(x = max(p.y-p.x)/2, y = nrow(x_y)/5, label = paste0("Prop within +/- 0.1:\n",
                                                                       round(sum(abs(p.y-p.x)<=0.1)/nrow(x_y), 4)))) +
     geom_text(aes(x = max(p.y-p.x)/2, y = nrow(x_y)/10, label = paste0("Mean difference:\n",
@@ -178,10 +184,11 @@ name_data = unique(df_AMR$Data)
     geom_vline(xintercept = 0) +
     geom_vline(xintercept = 0.1, linetype = "dashed") +
     geom_vline(xintercept = -0.1, linetype = "dashed") +
-    xlab("Absolute difference") +
+    xlab("Resistance difference") +
     ylab("Count") +
     theme_bw() +
-    theme_opts
+    theme_opts +
+    guides(fill = "none")
   
   plot_grid(pa, pb, nrow = 1)
   
