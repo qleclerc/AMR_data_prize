@@ -25,7 +25,7 @@ df_ATLAS <- read.csv(here("data", "raw", "2023_06_15 atlas_antibiotics.csv"))
 df_SIDERO <- read_excel(here("data", "raw", "Updated_Shionogi Five year SIDERO-WT Surveillance data(without strain number)_Vivli_220409.xlsx"))
 df_DREAM <- read_excel(here("data", "raw", "BEDAQUILINE DREAM DATASET FOR VIVLI - 06-06-2022.xlsx"))
 df_GEARS <- read_excel(here("data", "raw", "Venatorx surveillance data for Vivli 27Feb2023.xlsx"))
-df_SOARE <- read.csv(here("data", "raw", "gsk_201818_published.csv"))
+df_SOAR <- read.csv(here("data", "raw", "gsk_201818_published.csv"))
 df_KEYSTONE <- read_excel(here("data", "raw", "Omadacycline_2014_to_2022_Surveillance_data.xlsx"))
 
 #public
@@ -38,7 +38,7 @@ df_GLASS <- read.csv("https://raw.githubusercontent.com/qleclerc/GLASS2022/maste
 #Countries
 
 #Years
-years_of_interest = c(2018, 2019)
+years_of_interest = c(2018:2019)
 
 #Bacterial species 
 #E. coli & K. pneumoniae --> not in DREAM and SOARE
@@ -192,6 +192,58 @@ if(nrow(df_SIDERO_2) > 0){
 #combinations for ceftazidime and imipenem !!
 #####
 
+
+#### DREAM ####
+df_DREAM_2 <- df_DREAM[,c(3,1,5,7:18)]
+colnames(df_DREAM_2)[colnames(df_DREAM_2) == "EMB"] = "ETH"
+colnames(df_DREAM_2)[colnames(df_DREAM_2) == "RMP"] = "RIF"
+colnames(df_DREAM_2)[-c(1:3)] = as.ab(colnames(df_DREAM_2)[-c(1:3)])
+df_DREAM_2$Organism = as.mo(df_DREAM_2$Organism)
+df_DREAM_2$BDQ[df_DREAM_2$BDQ=="1.4999999999999999E-2"] = "0.015"
+
+#get antibiotics
+df_DREAM_2 <- df_DREAM_2[,c(1:3, which(colnames(df_DREAM_2) %in% antibiotics_of_interest))]
+#get bacteria
+df_DREAM_2 <- df_DREAM_2 %>% filter(Organism %in% bacteria_of_interest)
+#get years
+df_DREAM_2 <- df_DREAM_2 %>% filter(`Year Collected` %in% years_of_interest)
+
+if(nrow(df_DREAM_2) > 0){
+  #format resistances
+  df_DREAM_2 = df_DREAM_2 %>%
+    mutate_at(vars(-Country, -`Year Collected`, -Organism), as.mic)
+  
+  df_DREAM_2 = df_DREAM_2 %>%
+    mutate_if(is.mic, as.sir, mo = .$Organism)
+}
+#Infos: MIC data
+#no MIC breakpoints for several antibiotics!
+#####
+
+#### SOAR ####
+df_SOAR_2 <- df_SOAR[,c(5,9,6,11:23)]
+colnames(df_SOAR_2)[-c(1:3)] = as.ab(colnames(df_SOAR_2)[-c(1:3)])
+df_SOAR_2$ORGANISMNAME = as.mo(df_SOAR_2$ORGANISMNAME)
+
+#get antibiotics
+df_SOAR_2 <- df_SOAR_2[,c(1:3, which(colnames(df_SOAR_2) %in% antibiotics_of_interest))]
+#get bacteria
+df_SOAR_2 <- df_SOAR_2 %>% filter(ORGANISMNAME %in% bacteria_of_interest)
+#get years
+df_SOAR_2 <- df_SOAR_2 %>% filter(YEARCOLLECTED %in% years_of_interest)
+
+if(nrow(df_SOAR_2) > 0){
+  #format resistances
+  df_SOAR_2 = df_SOAR_2 %>%
+    mutate_at(vars(-COUNTRY, -YEARCOLLECTED, -ORGANISMNAME), as.mic)
+  
+  df_SOAR_2 = df_SOAR_2 %>%
+    mutate_if(is.mic, as.sir, mo = .$ORGANISMNAME)
+}
+#Infos: MIC data
+#####
+
+
 #### GLASS ####
 df_GLASS = df_GLASS %>%
   mutate(PathogenName = replace(PathogenName, PathogenName=="Salmonella spp.", "Salmonella enterica"),
@@ -216,6 +268,7 @@ df_GLASS_2 = df_GLASS_2 %>%
   ungroup()
 
 #INFOS: resistance status
+
 
 ################################################################################
 ####### Compute total and R isolates by country/year/bacteria/antibiotic #######
@@ -330,6 +383,61 @@ if(nrow(df_SIDERO_2) > 0 & !(all(is.na(df_SIDERO_2)[,-c(1:3)]))){
 
 #####  
 
+#### DREAM ####
+
+if(nrow(df_DREAM_2) > 0 & !(all(is.na(df_DREAM_2)[,-c(1:3)]))){
+  df_DREAM_3 = df_DREAM_2 %>%
+    # mutate(Cephalosporins = "S") %>%
+    # mutate(Cephalosporins = replace(Cephalosporins, IPM == "R" | MEM == "R", "R")) %>%
+    # mutate(Cephalosporins = replace(Cephalosporins, is.na(IPM)&is.na(MEM), NA)) %>%
+    # mutate(Carbapenems = "S") %>%
+    # mutate(Carbapenems = replace(Carbapenems, CAZ == "R", "R")) %>%
+    # mutate(Carbapenems = replace(Carbapenems, is.na(CAZ), NA)) %>%
+    melt(id.vars = c("Country", "Year Collected", "Organism")) %>%
+    mutate(value = as.sir(value)) %>%
+    filter(!is.na(value)) %>%
+    group_by(Country, `Year Collected`, Organism, variable, .drop = FALSE) %>%
+    summarise(Total = n(), Resistant = count_resistant(value)) %>%
+    ungroup %>%
+    rename(Pathogen = Organism,
+           Antibiotic = variable,
+           Year = `Year Collected`) %>%
+    select(all_of(final_column_names))
+  
+  ## Add dataset name
+  df_DREAM_3$Data <- 'DREAM'
+} else df_DREAM_3 = data.frame()
+
+#####  
+
+#### SOAR ####
+
+if(nrow(df_SOAR_2) > 0 & !(all(is.na(df_SOAR_2)[,-c(1:3)]))){
+  df_SOAR_3 = df_SOAR_2 %>%
+    # mutate(Cephalosporins = "S") %>%
+    # mutate(Cephalosporins = replace(Cephalosporins, IPM == "R" | MEM == "R", "R")) %>%
+    # mutate(Cephalosporins = replace(Cephalosporins, is.na(IPM)&is.na(MEM), NA)) %>%
+    # mutate(Carbapenems = "S") %>%
+    # mutate(Carbapenems = replace(Carbapenems, CAZ == "R", "R")) %>%
+    # mutate(Carbapenems = replace(Carbapenems, is.na(CAZ), NA)) %>%
+    melt(id.vars = c("COUNTRY", "YEARCOLLECTED", "ORGANISMNAME")) %>%
+    mutate(value = as.sir(value)) %>%
+    filter(!is.na(value)) %>%
+    group_by(COUNTRY, YEARCOLLECTED, ORGANISMNAME, variable, .drop = FALSE) %>%
+    summarise(Total = n(), Resistant = count_resistant(value)) %>%
+    ungroup %>%
+    rename(Pathogen = ORGANISMNAME,
+           Antibiotic = variable,
+           Year = YEARCOLLECTED,
+           Country = COUNTRY) %>%
+    select(all_of(final_column_names))
+  
+  ## Add dataset name
+  df_SOAR_3$Data <- 'DREAM'
+} else df_SOAR_3 = data.frame()
+
+#####  
+
 #### GLASS ####
 
 #for GLASS we take the average of the number of resistant and total isolates tested over the two molecules
@@ -387,7 +495,9 @@ df_AMR <- rbind(df_GLASS_3,
                 df_ATLAS_3,
                 df_GEARS_3,
                 df_KEYSTONE_3,
-                df_SIDERO_3)
+                df_SIDERO_3,
+                df_DREAM_3,
+                df_SOAR_3)
 
 if(nrow(df_AMR) == 0){
   cat("The requested year-drug-bug combination does not exist in any dataset!\n")
@@ -397,7 +507,9 @@ if(nrow(df_AMR) == 0){
                    "df_ATLAS_3",
                    "df_GEARS_3",
                    "df_KEYSTONE_3",
-                   "df_SIDERO_3")){
+                   "df_SIDERO_3",
+                   "df_DREAM_3",
+                   "df_SOAR_3")){
     if(nrow(get(dataset)) == 0) cat("The requested year-drug-bug combination does not exist in",
                                     strsplit(dataset, "_")[[1]][2], "\n")
   }
