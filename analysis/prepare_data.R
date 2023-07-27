@@ -42,7 +42,7 @@ years_of_interest = c(2018:2019)
 
 #Bacterial species 
 #E. coli & K. pneumoniae --> not in DREAM and SOARE
-bacteria_of_interest = as.mo(c("E. coli", "K. pneumoniae", "A. baumannii"))
+bacteria_of_interest = as.mo(c("E. coli", "K. pneumoniae"))
 
 #Antibiotics tested
 #ESBL (3GC) and carbapenems (CBP)
@@ -76,7 +76,7 @@ df_ATLAS_2 <- df_ATLAS_2 %>% filter(Year %in% years_of_interest)
 if(nrow(df_ATLAS_2) > 0){
   #format resistances
   df_ATLAS_2 = df_ATLAS_2 %>%
-    mutate_at(all_of(c(antibiotics_of_interest)), as.mic)
+    mutate_at(vars(-Country, -Year, -Species), as.mic)
   df_ATLAS_2 = df_ATLAS_2 %>%
     mutate_if(is.mic, as.sir, mo = .$Species)
 }
