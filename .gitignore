@@ -48,5 +48,8 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 
-#Raw data
+# Raw data
 data/raw
+
+# Readme html
+README.html

@@ -20,6 +20,8 @@ library(reshape2)
 ########################### Load AMR datasets ##################################
 ################################################################################
 
+if(!dir.exists(here("data", "raw"))) stop("Please place the industry surveillance datasets in a new subfolder of the \"data\" folder, named \"raw\"")
+
 #industry
 df_ATLAS <- read.csv(here("data", "raw", "2023_06_15 atlas_antibiotics.csv"))
 df_SIDERO <- read_excel(here("data", "raw", "Updated_Shionogi Five year SIDERO-WT Surveillance data(without strain number)_Vivli_220409.xlsx"))
@@ -49,12 +51,6 @@ bacteria_of_interest = as.mo(c("E. coli", "K. pneumoniae"))
 antibiotics_of_interest = as.ab(c("Ceftazidime", "Ceftriaxone",
                                   "Imipenem", "Meropenem"))
 
-#Resistance status to antibiotics
-#number of R isolates
-#number of total isolates
-#TO DO: 3GC as proxy for ESBL?
-
-
 ################################################################################
 ############### Get same variables for all AMR datasets ########################
 ################################################################################
@@ -80,8 +76,7 @@ if(nrow(df_ATLAS_2) > 0){
   df_ATLAS_2 = df_ATLAS_2 %>%
     mutate_if(is.mic, as.sir, mo = .$Species)
 }
-#INFOS: MIC and resistance status
-#no data for ceftriaxone for 2018-2019
+
 #####
 
 #### GEARS ####
@@ -107,11 +102,6 @@ if(nrow(df_GEARS_2) > 0){
     mutate_if(is.mic, as.sir, mo = .$Organism)
 }
 
-#INFOS: MIC data
-#CAZ: ceftazidime
-#no data for ceftriaxone
-#IPM = imipenem? --> no data it seems for the two bugs
-#MEM = meropenem?
 #####
 
 #### KEYSTONE ####
@@ -159,8 +149,6 @@ if(nrow(df_KEYSTONE_2) > 0){
   df_KEYSTONE_2 = df_KEYSTONE_2 %>%
     mutate_if(is.mic, as.sir, mo = .$Organism)
 }
-#INFOS: MIC data
-#no data for meropenem
 #####
 
 #### SIDERO ####
@@ -187,9 +175,6 @@ if(nrow(df_SIDERO_2) > 0){
   df_SIDERO_2 = df_SIDERO_2 %>%
     mutate_if(is.mic, as.sir, mo = .$`Organism Name`)
 }
-#Infos: MIC data
-#no data for ceftriaxone
-#combinations for ceftazidime and imipenem !!
 #####
 
 
@@ -216,8 +201,6 @@ if(nrow(df_DREAM_2) > 0){
   df_DREAM_2 = df_DREAM_2 %>%
     mutate_if(is.mic, as.sir, mo = .$Organism)
 }
-#Infos: MIC data
-#no MIC breakpoints for several antibiotics!
 #####
 
 #### SOAR ####
@@ -240,7 +223,6 @@ if(nrow(df_SOAR_2) > 0){
   df_SOAR_2 = df_SOAR_2 %>%
     mutate_if(is.mic, as.sir, mo = .$ORGANISMNAME)
 }
-#Infos: MIC data
 #####
 
 
@@ -267,8 +249,6 @@ df_GLASS_2 = df_GLASS_2 %>%
             Resistant = sum(Resistant)) %>%
   ungroup()
 
-#INFOS: resistance status
-
 
 ################################################################################
 ####### Compute total and R isolates by country/year/bacteria/antibiotic #######
@@ -281,12 +261,6 @@ final_column_names = c("Country", "Year", "Pathogen", "Antibiotic", "Total", "Re
 
 if(nrow(df_ATLAS_2) > 0 & !(all(is.na(df_ATLAS_2)[,-c(1:3)]))){
   df_ATLAS_3 = df_ATLAS_2 %>%
-    # mutate(Cephalosporins = "S") %>%
-    # mutate(Cephalosporins = replace(Cephalosporins, IPM == "R" | MEM == "R", "R")) %>%
-    # mutate(Cephalosporins = replace(Cephalosporins, is.na(IPM)&is.na(MEM), NA)) %>%
-    # mutate(Carbapenems = "S") %>%
-    # mutate(Carbapenems = replace(Carbapenems, CAZ == "R" | CRO == "R", "R")) %>%
-    # mutate(Carbapenems = replace(Carbapenems, is.na(CAZ)&is.na(CRO), NA)) %>%
     melt(id.vars = c("Country", "Year", "Species")) %>%
     mutate(value = as.sir(value)) %>%
     filter(!is.na(value)) %>%
@@ -307,12 +281,6 @@ if(nrow(df_ATLAS_2) > 0 & !(all(is.na(df_ATLAS_2)[,-c(1:3)]))){
 
 if(nrow(df_GEARS_2) > 0 & !(all(is.na(df_GEARS_2)[,-c(1:3)]))){
   df_GEARS_3 = df_GEARS_2 %>%
-    # mutate(Cephalosporins = "S") %>%
-    # mutate(Cephalosporins = replace(Cephalosporins, IPM == "R" | MEM == "R", "R")) %>%
-    # mutate(Cephalosporins = replace(Cephalosporins, is.na(IPM)&is.na(MEM), NA)) %>%
-    # mutate(Carbapenems = "S") %>%
-    # mutate(Carbapenems = replace(Carbapenems, CAZ == "R", "R")) %>%
-    # mutate(Carbapenems = replace(Carbapenems, is.na(CAZ), NA)) %>%
     melt(id.vars = c("Country", "Year", "Organism")) %>%
     mutate(value = as.sir(value)) %>%
     filter(!is.na(value)) %>%
@@ -333,12 +301,6 @@ if(nrow(df_GEARS_2) > 0 & !(all(is.na(df_GEARS_2)[,-c(1:3)]))){
 
 if(nrow(df_KEYSTONE_2) > 0 & !(all(is.na(df_KEYSTONE_2)[,-c(1:3)]))){ 
   df_KEYSTONE_3 = df_KEYSTONE_2 %>%
-    # mutate(Cephalosporins = "S") %>%
-    # mutate(Cephalosporins = replace(Cephalosporins, IPM == "R", "R")) %>%
-    # mutate(Cephalosporins = replace(Cephalosporins, is.na(IPM), NA)) %>%
-    # mutate(Carbapenems = "S") %>%
-    # mutate(Carbapenems = replace(Carbapenems, CAZ == "R" | CRO == "R", "R")) %>%
-    # mutate(Carbapenems = replace(Carbapenems, is.na(CAZ)&is.na(CRO), NA)) %>%
     melt(id.vars = c("Country", "Study Year", "Organism")) %>%
     mutate(value = as.sir(value)) %>%
     filter(!is.na(value)) %>%
@@ -360,12 +322,6 @@ if(nrow(df_KEYSTONE_2) > 0 & !(all(is.na(df_KEYSTONE_2)[,-c(1:3)]))){
 
 if(nrow(df_SIDERO_2) > 0 & !(all(is.na(df_SIDERO_2)[,-c(1:3)]))){
   df_SIDERO_3 = df_SIDERO_2 %>%
-    # mutate(Cephalosporins = "S") %>%
-    # mutate(Cephalosporins = replace(Cephalosporins, IPM == "R" | MEM == "R", "R")) %>%
-    # mutate(Cephalosporins = replace(Cephalosporins, is.na(IPM)&is.na(MEM), NA)) %>%
-    # mutate(Carbapenems = "S") %>%
-    # mutate(Carbapenems = replace(Carbapenems, CAZ == "R", "R")) %>%
-    # mutate(Carbapenems = replace(Carbapenems, is.na(CAZ), NA)) %>%
     melt(id.vars = c("Country", "Year Collected", "Organism Name")) %>%
     mutate(value = as.sir(value)) %>%
     filter(!is.na(value)) %>%
@@ -387,12 +343,6 @@ if(nrow(df_SIDERO_2) > 0 & !(all(is.na(df_SIDERO_2)[,-c(1:3)]))){
 
 if(nrow(df_DREAM_2) > 0 & !(all(is.na(df_DREAM_2)[,-c(1:3)]))){
   df_DREAM_3 = df_DREAM_2 %>%
-    # mutate(Cephalosporins = "S") %>%
-    # mutate(Cephalosporins = replace(Cephalosporins, IPM == "R" | MEM == "R", "R")) %>%
-    # mutate(Cephalosporins = replace(Cephalosporins, is.na(IPM)&is.na(MEM), NA)) %>%
-    # mutate(Carbapenems = "S") %>%
-    # mutate(Carbapenems = replace(Carbapenems, CAZ == "R", "R")) %>%
-    # mutate(Carbapenems = replace(Carbapenems, is.na(CAZ), NA)) %>%
     melt(id.vars = c("Country", "Year Collected", "Organism")) %>%
     mutate(value = as.sir(value)) %>%
     filter(!is.na(value)) %>%
@@ -414,12 +364,6 @@ if(nrow(df_DREAM_2) > 0 & !(all(is.na(df_DREAM_2)[,-c(1:3)]))){
 
 if(nrow(df_SOAR_2) > 0 & !(all(is.na(df_SOAR_2)[,-c(1:3)]))){
   df_SOAR_3 = df_SOAR_2 %>%
-    # mutate(Cephalosporins = "S") %>%
-    # mutate(Cephalosporins = replace(Cephalosporins, IPM == "R" | MEM == "R", "R")) %>%
-    # mutate(Cephalosporins = replace(Cephalosporins, is.na(IPM)&is.na(MEM), NA)) %>%
-    # mutate(Carbapenems = "S") %>%
-    # mutate(Carbapenems = replace(Carbapenems, CAZ == "R", "R")) %>%
-    # mutate(Carbapenems = replace(Carbapenems, is.na(CAZ), NA)) %>%
     melt(id.vars = c("COUNTRY", "YEARCOLLECTED", "ORGANISMNAME")) %>%
     mutate(value = as.sir(value)) %>%
     filter(!is.na(value)) %>%
@@ -439,40 +383,6 @@ if(nrow(df_SOAR_2) > 0 & !(all(is.na(df_SOAR_2)[,-c(1:3)]))){
 #####  
 
 #### GLASS ####
-
-#for GLASS we take the average of the number of resistant and total isolates tested over the two molecules
-
-# ##Cephalosporins
-# 
-# molecule11 <- df_GLASS_2 %>% filter(AbTargets == as.ab('Ceftriaxone'))
-# molecule12 <- df_GLASS_2 %>% filter(AbTargets == as.ab('Ceftazidime'))
-# df_GLASS_2_ceph <- merge(molecule11, molecule12, by = c("CountryTerritoryArea", "Year", "PathogenName"), all = T)
-# 
-# #new columns
-# df_GLASS_2_ceph$AbTargets <- "Cephalosporins"
-# df_GLASS_2_ceph$InterpretableAST <- rowMeans(df_GLASS_2_ceph[,c("InterpretableAST.x", "InterpretableAST.y")], na.rm = T)
-# df_GLASS_2_ceph$Resistant <- rowMeans(df_GLASS_2_ceph[,c("Resistant.x", "Resistant.y")], na.rm = T)
-# 
-# #remove old molecules
-# df_GLASS_2_ceph <- df_GLASS_2_ceph %>% select(!(c("AbTargets.x", "InterpretableAST.x", "Resistant.x", "AbTargets.y", "InterpretableAST.y","Resistant.y")))
-# 
-# ##Carbapenems
-# 
-# molecule21 <- df_GLASS_2 %>% filter(AbTargets == as.ab('Imipenem'))
-# molecule22 <- df_GLASS_2 %>% filter(AbTargets == as.ab('Meropenem'))
-# df_GLASS_2_carb <- merge(molecule21, molecule22, by = c("CountryTerritoryArea", "Year", "PathogenName"), all = T)
-# 
-# #new columns
-# df_GLASS_2_carb$AbTargets <- "Carbapenems"
-# df_GLASS_2_carb$InterpretableAST <- rowMeans(df_GLASS_2_carb[,c("InterpretableAST.x", "InterpretableAST.y")], na.rm = T)
-# df_GLASS_2_carb$Resistant <- rowMeans(df_GLASS_2_carb[,c("Resistant.x", "Resistant.y")], na.rm = T)
-# 
-# #remove old molecules
-# df_GLASS_2_carb <- df_GLASS_2_carb %>% select(!(c("AbTargets.x", "InterpretableAST.x", "Resistant.x", "AbTargets.y", "InterpretableAST.y","Resistant.y")))
-# 
-# ## Merge two classes
-# df_GLASS_3 <- rbind(df_GLASS_2_ceph, df_GLASS_2_carb, df_GLASS_2)
-
 
 if(nrow(df_GLASS_2) > 0){
   df_GLASS_3 = df_GLASS_2
@@ -533,13 +443,13 @@ if(nrow(df_AMR) == 0){
   ## Summary
   cat("Combined datasets cover", length(unique(df_AMR$Country)), "countries\n",
       "with a total of", sum(df_AMR$Total), "data points\n",
-      "(one data point is one test for one year-country-bug-drug-dataset combination)\n")
+      "(one data point is one test for one year-country-bacteria-antibiotic-dataset combination)\n")
   cat("Countries per datasets:")
   print(df_AMR %>% group_by(Data) %>% summarise(n_countries = length(unique(Country))))
   cat("Data points per datasets:")
   print(df_AMR %>% group_by(Data) %>% summarise(n_datapoints = sum(Total)))
   
-  ## Save it into csv 
+  # Save it into csv
   write.csv(x = df_AMR,
             file = here("data", "final_AMR_dataset.csv"),
             row.names = F)
