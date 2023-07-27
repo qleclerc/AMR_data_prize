@@ -1,6 +1,6 @@
 # Stronger together? Potential and limitations of combining industry datasets to fill in global AMR surveillance gaps
 
-Quentin Leclerc$^{1,2,3}$*, Eve Rahbe$^{1,2}$, Aleksandra Kovacevic$^{1,2}$, Lulla Opatowski$^{1,2}$
+Quentin Leclerc $^{1,2,3}$ *, Eve Rahbe $^{1,2}$ , Aleksandra Kovacevic $^{1,2}$ , Lulla Opatowski $^{1,2}$ 
 
 $^{1}$ Epidemiology and Modelling of Antimicrobial Resistance, Institut Pasteur, France  
 $^{2}$ Conservatoire National des Arts et Métiers, France  
