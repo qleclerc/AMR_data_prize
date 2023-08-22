@@ -118,6 +118,13 @@ df_KEYSTONE_2 <- df_KEYSTONE_2 %>% filter(`Study Year` %in% years_of_interest)
 
 if(nrow(df_KEYSTONE_2) > 0){
   #format resistances
+  # WARNING: several columns use TRUE/FALSE for resistance. Assuming TRUE means
+  # resistant, but this leads to some inconsistent results (eg very high S aureus
+  # vancomycin resistance). Overall, there are even indications that the interpretation
+  # might differ by column, since in any case many vancomycin-res S aureus are MSSA,
+  # which seems highly unlikely)
+  # I tried to compare to published KEYSTONE estimates, but I should have 100% sus
+  # for S aureus vanc in 2019, and that is not the case
   df_KEYSTONE_2 = df_KEYSTONE_2 %>%
     mutate_if(is.logical, as.numeric)
   
@@ -427,13 +434,18 @@ if(nrow(df_AMR) == 0){
   ## Change countries names so they correspond between datasets
   df_AMR$Country <- str_replace_all(df_AMR$Country,
                                     c("United States" = "USA",
+                                      "US$" = "USA",
                                       "United Kingdom of Great Britain and Northern Ireland" = "UK",
                                       "United Kingdom" = "UK",
                                       "Korea, South" = "South Korea",
                                       "Republic of Korea" = "South Korea",
                                       "Russian Federation" = "Russia",
                                       "Lao People's Democratic Republic" = "Laos",
-                                      "Slovak Republic" = "Slovakia"))
+                                      "Slovak Republic" = "Slovakia",
+                                      "INDIA" = "India",
+                                      "PHILIPPINES" = "Philippines",
+                                      "Iran (Islamic Republic of)" = "Iran",
+                                      "Czechia" = "Czech Republic"))
   
   ## Restore nicer bacteria and antibiotic names
   df_AMR$Antibiotic = as.character(df_AMR$Antibiotic)
