@@ -32,6 +32,7 @@ df_KEYSTONE <- read_excel(here("data", "raw", "Omadacycline_2014_to_2022_Surveil
 
 #public
 df_GLASS <- read.csv("https://raw.githubusercontent.com/qleclerc/GLASS2022/master/compiled_WHO_GLASS_2022.csv") #Quentin Git
+# df_GLASS = read.csv(here::here("data", "glass_combined.csv"))
 
 ################################################################################
 ############### Choose variable of interests across datasets ###################
@@ -40,16 +41,18 @@ df_GLASS <- read.csv("https://raw.githubusercontent.com/qleclerc/GLASS2022/maste
 #Countries
 
 #Years
-years_of_interest = c(2018:2019)
+# years_of_interest = c(2018:2019)
+years_of_interest = c(2016:2020)
 
 #Bacterial species 
 #E. coli & K. pneumoniae --> not in DREAM and SOARE
-bacteria_of_interest = as.mo(c("E. coli", "K. pneumoniae"))
+# bacteria_of_interest = as.mo(c("E. coli", "K pneumoniae"))
+bacteria_of_interest = as.mo(c("A. baumannii"))
 
 #Antibiotics tested
 #ESBL (3GC) and carbapenems (CBP)
-antibiotics_of_interest = as.ab(c("Ceftazidime", "Ceftriaxone",
-                                  "Imipenem", "Meropenem"))
+# antibiotics_of_interest = as.ab(c("Ceftazidime", "Ceftriaxone", "Imipenem", "Meropenem"))
+antibiotics_of_interest = as.ab(c("Colistin", "Gentamicin", "Imipenem", "Meropenem"))
 
 ################################################################################
 ############### Get same variables for all AMR datasets ########################
@@ -63,11 +66,11 @@ colnames(df_ATLAS_2)[-c(1:3)] = as.ab(colnames(df_ATLAS_2)[-c(1:3)])
 df_ATLAS_2$Species = as.mo(df_ATLAS_2$Species)
 
 #get antibiotics
-df_ATLAS_2 <- df_ATLAS_2[,c(colnames(df_ATLAS_2)[1:3], antibiotics_of_interest)]
+if(!(all(is.na(antibiotics_of_interest)))) df_ATLAS_2 <- df_ATLAS_2[,c(1:3, which(colnames(df_ATLAS_2) %in% antibiotics_of_interest))]
 #get bacteria
-df_ATLAS_2 <- df_ATLAS_2 %>% filter(Species %in% bacteria_of_interest)
+if(!(all(is.na(bacteria_of_interest)))) df_ATLAS_2 <- df_ATLAS_2 %>% filter(Species %in% bacteria_of_interest)
 #get years
-df_ATLAS_2 <- df_ATLAS_2 %>% filter(Year %in% years_of_interest)
+if(length(years_of_interest) != 0) df_ATLAS_2 <- df_ATLAS_2 %>% filter(Year %in% years_of_interest)
 
 if(nrow(df_ATLAS_2) > 0){
   #format resistances
@@ -86,11 +89,11 @@ colnames(df_GEARS_2)[-c(1:3)] = as.ab(colnames(df_GEARS_2)[-c(1:3)])
 df_GEARS_2$Organism = as.mo(df_GEARS_2$Organism)
 
 #get antibiotics
-df_GEARS_2 <- df_GEARS_2[,c(1:3, which(colnames(df_GEARS_2) %in% antibiotics_of_interest))]
+if(!(all(is.na(antibiotics_of_interest)))) df_GEARS_2 <- df_GEARS_2[,c(1:3, which(colnames(df_GEARS_2) %in% antibiotics_of_interest))]
 #get bacteria
-df_GEARS_2 <- df_GEARS_2 %>% filter(Organism %in% bacteria_of_interest)
+if(!(all(is.na(bacteria_of_interest)))) df_GEARS_2 <- df_GEARS_2 %>% filter(Organism %in% bacteria_of_interest)
 #get years
-df_GEARS_2 <- df_GEARS_2 %>% filter(Year %in% years_of_interest)
+if(length(years_of_interest) != 0) df_GEARS_2 <- df_GEARS_2 %>% filter(Year %in% years_of_interest)
 
 if(nrow(df_GEARS_2) > 0){
   #format resistances
@@ -107,14 +110,15 @@ if(nrow(df_GEARS_2) > 0){
 #### KEYSTONE ####
 df_KEYSTONE_2 <- df_KEYSTONE[,c(34, 2, 3, c(4:32))]
 colnames(df_KEYSTONE_2)[-c(1:3)] = as.ab(colnames(df_KEYSTONE_2)[-c(1:3)])
+df_KEYSTONE_2$Organism[grepl("Acinetobacter baumannii", df_KEYSTONE_2$Organism)] = "Acinetobacter baumannii"
 df_KEYSTONE_2$Organism = as.mo(df_KEYSTONE_2$Organism)
 
 #get antibiotics
-df_KEYSTONE_2 <- df_KEYSTONE_2[,c(1:3, which(colnames(df_KEYSTONE_2) %in% antibiotics_of_interest))]
+if(!(all(is.na(antibiotics_of_interest)))) df_KEYSTONE_2 <- df_KEYSTONE_2[,c(1:3, which(colnames(df_KEYSTONE_2) %in% antibiotics_of_interest))]
 #get bacteria
-df_KEYSTONE_2 <- df_KEYSTONE_2 %>% filter(Organism %in% bacteria_of_interest)
+if(!(all(is.na(bacteria_of_interest)))) df_KEYSTONE_2 <- df_KEYSTONE_2 %>% filter(Organism %in% bacteria_of_interest)
 #get years
-df_KEYSTONE_2 <- df_KEYSTONE_2 %>% filter(`Study Year` %in% years_of_interest)
+if(length(years_of_interest) != 0) df_KEYSTONE_2 <- df_KEYSTONE_2 %>% filter(`Study Year` %in% years_of_interest)
 
 if(nrow(df_KEYSTONE_2) > 0){
   #format resistances
@@ -166,11 +170,11 @@ colnames(df_SIDERO_2)[-c(1:3)] = as.ab(colnames(df_SIDERO_2)[-c(1:3)])
 df_SIDERO_2$`Organism Name` = as.mo(df_SIDERO_2$`Organism Name`)
 
 #get antibiotics
-df_SIDERO_2 <- df_SIDERO_2[,c(1:3, which(colnames(df_SIDERO_2) %in% antibiotics_of_interest))]
+if(!(all(is.na(antibiotics_of_interest)))) df_SIDERO_2 <- df_SIDERO_2[,c(1:3, which(colnames(df_SIDERO_2) %in% antibiotics_of_interest))]
 #get bacteria
-df_SIDERO_2 <- df_SIDERO_2 %>% filter(`Organism Name` %in% bacteria_of_interest)
+if(!(all(is.na(bacteria_of_interest)))) df_SIDERO_2 <- df_SIDERO_2 %>% filter(`Organism Name` %in% bacteria_of_interest)
 #get years
-df_SIDERO_2 <- df_SIDERO_2 %>% filter(`Year Collected` %in% years_of_interest)
+if(length(years_of_interest) != 0) df_SIDERO_2 <- df_SIDERO_2 %>% filter(`Year Collected` %in% years_of_interest)
 
 if(nrow(df_SIDERO_2) > 0){
   #format resistances
@@ -194,11 +198,11 @@ df_DREAM_2$Organism = as.mo(df_DREAM_2$Organism)
 df_DREAM_2$BDQ[df_DREAM_2$BDQ=="1.4999999999999999E-2"] = "0.015"
 
 #get antibiotics
-df_DREAM_2 <- df_DREAM_2[,c(1:3, which(colnames(df_DREAM_2) %in% antibiotics_of_interest))]
+if(!(all(is.na(antibiotics_of_interest)))) df_DREAM_2 <- df_DREAM_2[,c(1:3, which(colnames(df_DREAM_2) %in% antibiotics_of_interest))]
 #get bacteria
-df_DREAM_2 <- df_DREAM_2 %>% filter(Organism %in% bacteria_of_interest)
+if(!(all(is.na(bacteria_of_interest)))) df_DREAM_2 <- df_DREAM_2 %>% filter(Organism %in% bacteria_of_interest)
 #get years
-df_DREAM_2 <- df_DREAM_2 %>% filter(`Year Collected` %in% years_of_interest)
+if(length(years_of_interest) != 0) df_DREAM_2 <- df_DREAM_2 %>% filter(`Year Collected` %in% years_of_interest)
 
 if(nrow(df_DREAM_2) > 0){
   #format resistances
@@ -216,11 +220,11 @@ colnames(df_SOAR_2)[-c(1:3)] = as.ab(colnames(df_SOAR_2)[-c(1:3)])
 df_SOAR_2$ORGANISMNAME = as.mo(df_SOAR_2$ORGANISMNAME)
 
 #get antibiotics
-df_SOAR_2 <- df_SOAR_2[,c(1:3, which(colnames(df_SOAR_2) %in% antibiotics_of_interest))]
+if(!(all(is.na(antibiotics_of_interest)))) df_SOAR_2 <- df_SOAR_2[,c(1:3, which(colnames(df_SOAR_2) %in% antibiotics_of_interest))]
 #get bacteria
-df_SOAR_2 <- df_SOAR_2 %>% filter(ORGANISMNAME %in% bacteria_of_interest)
+if(!(all(is.na(bacteria_of_interest)))) df_SOAR_2 <- df_SOAR_2 %>% filter(ORGANISMNAME %in% bacteria_of_interest)
 #get years
-df_SOAR_2 <- df_SOAR_2 %>% filter(YEARCOLLECTED %in% years_of_interest)
+if(length(years_of_interest) != 0) df_SOAR_2 <- df_SOAR_2 %>% filter(YEARCOLLECTED %in% years_of_interest)
 
 if(nrow(df_SOAR_2) > 0){
   #format resistances
@@ -235,20 +239,20 @@ if(nrow(df_SOAR_2) > 0){
 
 #### GLASS ####
 df_GLASS = df_GLASS %>%
-  mutate(PathogenName = replace(PathogenName, PathogenName=="Salmonella spp.", "Salmonella enterica"),
-         PathogenName = replace(PathogenName, PathogenName=="Acinetobacter spp.", "Acinetobacter baumannii"),
-         PathogenName = replace(PathogenName, PathogenName=="Shigella spp.", "Shigella sonnei"))
+  mutate(PathogenName = replace(PathogenName, grepl("Salmonella", PathogenName), "Salmonella enterica"),
+         PathogenName = replace(PathogenName, grepl("Acinetobacter", PathogenName), "Acinetobacter baumannii"),
+         PathogenName = replace(PathogenName, grepl("Shigella", PathogenName), "Shigella sonnei"))
 #df_GLASS = df_GLASS %>% filter(Specimen == "BLOOD")
 df_GLASS_2 <- df_GLASS[,c("CountryTerritoryArea", "Year", "PathogenName", "AbTargets", "InterpretableAST", "Resistant")]
 
 #get antibiotics
 df_GLASS_2$AbTargets = as.ab(df_GLASS_2$AbTargets)
-df_GLASS_2 <- df_GLASS_2 %>% filter(AbTargets %in% antibiotics_of_interest)
+if(!(all(is.na(antibiotics_of_interest)))) df_GLASS_2 <- df_GLASS_2 %>% filter(AbTargets %in% antibiotics_of_interest)
 #get bacteria
 df_GLASS_2$PathogenName = as.mo(df_GLASS_2$PathogenName)
-df_GLASS_2 <- df_GLASS_2 %>% filter(PathogenName %in% bacteria_of_interest)
+if(!(all(is.na(bacteria_of_interest)))) df_GLASS_2 <- df_GLASS_2 %>% filter(PathogenName %in% bacteria_of_interest)
 #get years
-df_GLASS_2 <- df_GLASS_2 %>% filter(Year %in% years_of_interest)
+if(length(years_of_interest) != 0) df_GLASS_2 <- df_GLASS_2 %>% filter(Year %in% years_of_interest)
 
 df_GLASS_2 = df_GLASS_2 %>%
   group_by(CountryTerritoryArea, Year, PathogenName, AbTargets) %>%
@@ -384,7 +388,7 @@ if(nrow(df_SOAR_2) > 0 & !(all(is.na(df_SOAR_2)[,-c(1:3)]))){
     select(all_of(final_column_names))
   
   ## Add dataset name
-  df_SOAR_3$Data <- 'DREAM'
+  df_SOAR_3$Data <- 'SOAR'
 } else df_SOAR_3 = data.frame()
 
 #####  
