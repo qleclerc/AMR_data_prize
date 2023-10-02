@@ -11,6 +11,8 @@ $^{3}$ Université de Versailles Saint-Quentin-en-Yvelines/INSERM, France
 <br/>
 
 This repository contains the code for our project submitted to the Vivli AMR Data Challenge.
+This repository is based on research using data from Pfizer, GSK, Johnson & Johnson, Paratek, Venatorx, Shionogi, obtained through https://amr.vivli.org. 
+The GLASS dataset was manually extracted from the WHO GLASS dashboard (dataset available from https://github.com/qleclerc/GLASS2022). 
 
 <br/>
 
