@@ -14,25 +14,15 @@ library(reshape2)
 ################################################################################
 
 #industry
-df_ATLAS <- read.csv(here("data", "raw", "2023_06_15 atlas_antibiotics.csv"))
-df_SIDERO <- read_excel(here("data", "raw", "Updated_Shionogi Five year SIDERO-WT Surveillance data(without strain number)_Vivli_220409.xlsx"))
-df_DREAM <- read_excel(here("data", "raw", "BEDAQUILINE DREAM DATASET FOR VIVLI - 06-06-2022.xlsx"))
-df_GEARS <- read_excel(here("data", "raw", "Venatorx surveillance data for Vivli 27Feb2023.xlsx"))
-df_SOAR <- read.csv(here("data", "raw", "gsk_201818_published.csv"))
-df_KEYSTONE <- read_excel(here("data", "raw", "Omadacycline_2014_to_2022_Surveillance_data.xlsx"))
+atlas_data <- read.csv(here("data", "raw", "2023_06_15 atlas_antibiotics.csv"))
+sidero_data <- read_excel(here("data", "raw", "Updated_Shionogi Five year SIDERO-WT Surveillance data(without strain number)_Vivli_220409.xlsx"))
+dream_data <- read_excel(here("data", "raw", "BEDAQUILINE DREAM DATASET FOR VIVLI - 06-06-2022.xlsx"))
+gears_data <- read_excel(here("data", "raw", "Venatorx surveillance data for Vivli 27Feb2023.xlsx"))
+soar_data <- read.csv(here("data", "raw", "gsk_201818_published.csv"))
+keystone_data <- read_excel(here("data", "raw", "Omadacycline_2014_to_2022_Surveillance_data.xlsx"))
 
 #public
-df_GLASS <- read.csv("https://raw.githubusercontent.com/qleclerc/GLASS2022/master/compiled_WHO_GLASS_2022.csv") #Quentin Git
-
-################################################################################
-
-glass_data = df_GLASS
-atlas_data = df_ATLAS
-sidero_data = df_SIDERO
-gears_data = df_GEARS
-keystone_data = df_KEYSTONE
-soar_data = df_SOAR
-dream_data = df_DREAM
+glass_data = read.csv(here::here("data", "glass_combined.csv"))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ GLASS (public) - coverage map ~~~~~~~~~~~~~~~~~
 glass_countries = glass_data %>%
@@ -412,7 +402,7 @@ soar_atb2
 ################################# ATLAS 45 atbs
 
 #### ATLAS ####
-df_ATLAS_2 = df_ATLAS[,-c(104:126)] # remove last columns
+df_ATLAS_2 = atlas_data[,-c(104:126)] # remove last columns
 df_ATLAS_2 <- df_ATLAS_2[,c(grep(pattern = "_I", colnames(df_ATLAS_2), invert=T))]
 
 str(df_ATLAS_2)
