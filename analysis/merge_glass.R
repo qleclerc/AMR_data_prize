@@ -66,10 +66,25 @@ df_GLASS19 = df_GLASS19 %>%
   ungroup %>%
   mutate(PercentResistant = Resistant/InterpretableAST*100)
 
+correct_tot_isolates = df_GLASS19 %>%
+  group_by(CountryTerritoryArea, Year, Specimen, PathogenName) %>%
+  summarise(TotalSpecimenIsolates = max(TotalSpecimenIsolates)) %>%
+  group_by(CountryTerritoryArea, Year, Specimen) %>%
+  summarise(TotalSpecimenIsolates = sum(TotalSpecimenIsolates)) %>%
+  ungroup
+
+df_GLASS19 = df_GLASS19 %>%
+  select(-TotalSpecimenIsolates) %>%
+  left_join(correct_tot_isolates, by = c("CountryTerritoryArea", "Year", "Specimen")) %>% 
+  select(colnames(df_GLASS))
+
 # Combined dataset
 df_GLASS_agg = rbind(df_GLASS, df_GLASS19) %>%
   distinct() %>%
   group_by(Iso3, CountryTerritoryArea, WHORegionName, Year, Specimen, PathogenName, AbTargets) %>%
   summarise(across(TotalSpecimenIsolates:PercentResistant, max))
+
+
+# CHECK mrsa, sometimes have met and oxa and cef and doesn't all line up, and changes which two line up together
 
 write.csv(df_GLASS_agg, here::here("data", "glass_combined.csv"), row.names = F)

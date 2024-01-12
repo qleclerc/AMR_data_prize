@@ -34,7 +34,7 @@ df_KEYSTONE <- read_excel(here("data", "raw", "Omadacycline_2014_to_2022_Surveil
 #I'm doing some GLASS reformatting here already, easier than doing it later
 df_GLASS = read.csv(here::here("data", "glass_combined.csv"))
 df_GLASS = df_GLASS %>%
-  mutate(PathogenName = replace(PathogenName, grepl("Salmonella", PathogenName), "Salmonella enterica"),
+  mutate(PathogenName = replace(PathogenName, grepl("Salmonella", PathogenName), "Salmonella spp"),
          PathogenName = replace(PathogenName, grepl("Acinetobacter", PathogenName), "Acinetobacter baumannii"),
          PathogenName = replace(PathogenName, grepl("Shigella", PathogenName), "Shigella sonnei"))
 df_GLASS = df_GLASS %>%
@@ -60,7 +60,7 @@ years_of_interest = c(2017:2020)
 #Bacterial species 
 #E. coli & K. pneumoniae --> not in DREAM and SOARE
 # bacteria_of_interest = as.mo(c("E. coli", "K pneumoniae"))
-# bacteria_of_interest = as.mo(c("A. baumannii"))
+# bacteria_of_interest = as.mo(c("Salmonella spp"))
 bacteria_of_interest = as.mo(unique(df_GLASS$PathogenName))
 
 #Antibiotics tested
@@ -173,6 +173,11 @@ df_ATLAS_2$Oxacillin[df_ATLAS_2$Phenotype == "MRSA"] = 8
 # ESBL harmonisation - ESBL status indicated by "ESBL" label in Phenotype, not necessarily MIC
 # so, set all ESBL phenotypes to have ampicillin MIC of 32
 df_ATLAS_2$Ampicillin[df_ATLAS_2$Phenotype == "ESBL"] = 32
+# Acinetobacter harmonisation - assume all spp are baumannii
+df_ATLAS_2$Species[grepl("Acinetobacter spp", df_ATLAS_2$Species)] = "Acinetobacter baumannii"
+# Salmonella harmonisation - assume all are spp
+df_ATLAS_2$Species[grepl("Salmonella", df_ATLAS_2$Species)] = "Salmonella spp"
+
 df_ATLAS_2 <- df_ATLAS_2[,c(5,12,3,14:ncol(df_ATLAS_2))]
 colnames(df_ATLAS_2)[-c(1:3)] = as.ab(colnames(df_ATLAS_2)[-c(1:3)])
 df_ATLAS_2$Species = as.mo(df_ATLAS_2$Species)
@@ -259,8 +264,12 @@ if(nrow(df_GEARS_2) > 0){
 df_KEYSTONE_2 <- df_KEYSTONE[,c(34, 2, 3, c(4:32))]
 colnames(df_KEYSTONE_2)[-c(1:3)] = as.ab(colnames(df_KEYSTONE_2)[-c(1:3)])
 # MRSA harmonisation - here, only oxacillin is used so okay
+# Acinetobacter harmonisation - assume baumannii-calcoaceticus species complex is baumannii
 df_KEYSTONE_2$Organism[grepl("Acinetobacter baumannii", df_KEYSTONE_2$Organism)] = "Acinetobacter baumannii"
+# Salmonella harmonisation - assume all are spp
+df_KEYSTONE_2$Organism[grepl("Salmonella", df_KEYSTONE_2$Organism)] = "Salmonella spp"
 df_KEYSTONE_2$Organism = as.mo(df_KEYSTONE_2$Organism)
+
 
 #get antibiotics
 if(!(all(is.na(antibiotics_of_interest)))) df_KEYSTONE_2 <- df_KEYSTONE_2[,c(1:3, which(colnames(df_KEYSTONE_2) %in% antibiotics_of_interest))]
@@ -332,8 +341,11 @@ df_SIDERO_2 <- df_SIDERO[,c(3,5,1,7:20)]
 df_SIDERO_2 = df_SIDERO_2 %>% select(-"Meropenem/ Vaborbactam at 8")
 colnames(df_SIDERO_2) = sapply(colnames(df_SIDERO_2), function(x) unlist(strsplit(x, "/"))[[1]])
 colnames(df_SIDERO_2)[-c(1:3)] = as.ab(colnames(df_SIDERO_2)[-c(1:3)])
-df_SIDERO_2$`Organism Name` = as.mo(df_SIDERO_2$`Organism Name`)
 # no MRSA here so no harmonisation needed
+# Acinetobacter harmonisation - assume spp is baumannii
+df_SIDERO_2$`Organism Name`[grepl("Acinetobacter baumannii", df_SIDERO_2$`Organism Name`)] = "Acinetobacter baumannii"
+df_SIDERO_2$`Organism Name`[grepl("Acinetobacter sp.", df_SIDERO_2$`Organism Name`)] = "Acinetobacter baumannii"
+df_SIDERO_2$`Organism Name` = as.mo(df_SIDERO_2$`Organism Name`)
 
 #get antibiotics
 if(!(all(is.na(antibiotics_of_interest)))) df_SIDERO_2 <- df_SIDERO_2[,c(1:3, which(colnames(df_SIDERO_2) %in% antibiotics_of_interest))]
