@@ -61,7 +61,7 @@ years_of_interest = c(2017:2020)
 #E. coli & K. pneumoniae --> not in DREAM and SOARE
 # bacteria_of_interest = as.mo(c("E. coli", "K pneumoniae"))
 # bacteria_of_interest = as.mo(c("Salmonella spp"))
-bacteria_of_interest = as.mo(unique(df_GLASS$PathogenName))
+bacteria_of_interest = as.mo(unique(df_GLASS$PathogenName))[-4]
 
 #Antibiotics tested
 #ESBL (3GC) and carbapenems (CBP)

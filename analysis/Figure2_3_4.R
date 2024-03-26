@@ -16,6 +16,7 @@ library(here)
 library(cowplot)
 library(RColorBrewer)
 library(AMR)
+library(ggh4x)
 
 ################################################################################
 ########################### Load AMR datasets ##################################
@@ -40,7 +41,7 @@ df_AMR$p <- df_AMR$Resistant/df_AMR$Total
 # x = df_AMR[df_AMR$Data %in% c('GLASS'),] %>%
 #   filter(Pathogen %in% c("Escherichia coli", "Klebsiella pneumoniae"))
 x = df_AMR[df_AMR$Data %in% c('GLASS'),]
-  
+
 
 y = df_AMR %>%
   filter(Data != "GLASS") %>%
@@ -50,7 +51,7 @@ y = df_AMR %>%
   mutate(Data = "All",
          p = Resistant/Total) %>%
   ungroup
-  # filter(Pathogen %in% c("Escherichia coli", "Klebsiella pneumoniae"))
+# filter(Pathogen %in% c("Escherichia coli", "Klebsiella pneumoniae"))
 
 
 
@@ -99,16 +100,16 @@ ggplot(x_y) +
   scale_color_discrete(type = col_pal) +
   geom_label(data = x_y_text,
              aes(x = 0.15, y = 0.75, label = paste0("Comparisons:\n",
-                                                Comparisons)), alpha = 0.5, label.size = NA) +
+                                                    Comparisons)), alpha = 0, label.size = NA, fontface="bold") +
   geom_label(data = x_y_text,
              aes(x = 0.15, y = 0.95, label = paste0("Data points:\n",
-                                                Data_points)), alpha = 0.5, label.size = NA) +
+                                                    Data_points)), alpha = 0, label.size = NA, fontface="bold") +
   geom_label(data = x_y_text,
-             aes(x = 0.78, y = 0.22, label = paste0("Fraction within +/-0.1:\n",
-                                                Prop_within)), alpha = 0.5, label.size = NA) +
+             aes(x = 0.77, y = 0.22, label = paste0("Fraction within +/-0.1:\n",
+                                                    Prop_within)), alpha = 0, label.size = NA, fontface="bold") +
   geom_label(data = x_y_text,
-             aes(x = 0.78, y = 0.05, label = paste0("Mean difference:\n",
-                                               Mean_diff)), alpha = 0.5, label.size = NA) +
+             aes(x = 0.77, y = 0.05, label = paste0("Mean difference:\n",
+                                                    Mean_diff)), alpha = 0, label.size = NA, fontface="bold") +
   geom_abline() +
   geom_abline(slope = 1, intercept = 0.10, linetype = "dashed") +
   geom_abline(slope = 1, intercept = -0.10, linetype = "dashed") +
@@ -120,7 +121,7 @@ ggplot(x_y) +
         axis.title.x = element_text(size = 12),
         axis.text.y = element_text(size = 12),
         axis.title.y = element_text(size = 12),
-        strip.text = element_text(size = 12),
+        strip.text = element_text(size = 12, face = "italic"),
         legend.position = "bottom",
         legend.text = element_text(size = 12))
 
@@ -129,22 +130,40 @@ ggsave(here::here("plots", "fig2.png"), height = 8, width = 10)
 
 ## FIGURE 3 ####
 
-ggplot(x_y) +
-  geom_boxplot(aes(x=Antibiotic, y=p.y, colour = Antibiotic)) +
-  facet_wrap(~Pathogen, scales = "free_x") +
-  scale_x_discrete(breaks = unique(x_y$Antibiotic),
-                   labels = as.ab(unique(x_y$Antibiotic))) +
+x_y %>%
+  group_by(Year, Pathogen, Antibiotic) %>%
+  summarise(Total.y = sum(Total.y),
+            Resistant.y = sum(Resistant.y)) %>%
+  ungroup %>%
+  mutate(p.y = Resistant.y/Total.y) %>%
+  mutate(err = 1.96*sqrt(p.y*(1-p.y)/Total.y)) %>%
+  mutate(Class = as.character(Antibiotic)) %>%
+  mutate(Class = replace(Class, Class %in% c("Amikacin", "Gentamicin"), "Amino."),
+         Class = replace(Class, Class %in% c("Doripenem", "Imipenem", "Meropenem"), "Carb."),
+         Class = replace(Class, Class %in% c("Cefepime", "Ceftazidime", "Ceftriaxone"), "Ceph."),
+         Class = replace(Class, Class %in% c("Ciprofloxacin", "Levofloxacin"), "Fluo."),
+         Class = replace(Class, Class %in% c("Ampicillin", "Benzylpenicillin", "Oxacillin"), "Beta."),
+         Class = replace(Class, Class %in% c("Minocycline", "Tigecycline"), "Tetra."),
+         Class = replace(Class, Class %in% c("Colistin"), "Col."),
+         Class = replace(Class, Class %in% c("Trimethoprim/sulfamethoxazole"), "Trim.")) %>%
+  mutate(Class = factor(Class, levels = c("Amino.", "Carb.", "Ceph.",
+                                          "Fluo.", "Beta.", "Col.",
+                                          "Tetra.", "Trim."))) %>%
+  ggplot() +
+  geom_line(aes(x=Year, y=p.y, colour = Antibiotic, group=Antibiotic), linewidth=0.8) +
+  geom_errorbar(aes(x=Year, ymin=p.y-err, ymax=p.y+err, colour = Antibiotic, group=Antibiotic), width=0.5, linewidth=0.8) +
+  facet_grid(cols=vars(Pathogen), rows=vars(Class)) +
   scale_color_discrete(type=col_pal) +
   theme_bw() +
-  guides(colour = "none") +
-  labs(y = "% resistance combined industry dataset")+
-  theme(axis.text.y = element_text(size = 12),
-        axis.text.x = element_text(size = 12, angle = 45, hjust = 1),
-        axis.title = element_text(size = 12),
-        strip.text = element_text(size = 12))
+  labs(y = "Resistance proportion in combined industry dataset", colour="")+
+  theme(axis.text.y = element_text(size = 11),
+        axis.text.x = element_text(size = 11, angle = 45, hjust = 1),
+        axis.title = element_text(size = 11),
+        strip.text.x = element_text(face = "italic"),
+        legend.position = "bottom",
+        legend.text = element_text(size = 11))
 
-ggsave(here::here("plots", "fig3.png"), height = 7, width = 8.5)
-
+ggsave(here::here("plots", "fig3.png"), height = 8, width = 9.5)
 
 ## FIGURE 4 ####
 
@@ -178,10 +197,12 @@ p1 = ggplot(af_data) +
   scale_color_discrete(type = RColorBrewer::brewer.pal(6, "Dark2")[1]) +
   labs(x = "Industry isolates in comparison",
        y = "Absolute diff. in resistance",
-       colour = "WHO Region:") +
+       colour = "WHO Region:",
+       title = "African Region") +
   theme_bw() +
   theme(axis.text = element_text(size = 12),
-        axis.title = element_text(size = 12)) +
+        axis.title = element_text(size = 12),
+        plot.title = element_text(size=12, face = "bold")) +
   guides(colour = "none")
 
 em_data = x_y %>%
@@ -200,10 +221,12 @@ p2 = ggplot(em_data) +
   scale_color_discrete(type = RColorBrewer::brewer.pal(6, "Dark2")[2]) +
   labs(x = "Industry isolates in comparison",
        y = "Absolute diff. in resistance",
-       colour = "WHO Region:") +
+       colour = "WHO Region:",
+       title = "Eastern Mediterranean Region") +
   theme_bw() +
   theme(axis.text = element_text(size = 12),
-        axis.title = element_text(size = 12)) +
+        axis.title = element_text(size = 12),
+        plot.title = element_text(size=12, face = "bold")) +
   guides(colour = "none")
 
 eu_data = x_y %>%
@@ -222,10 +245,12 @@ p3 = ggplot(eu_data) +
   scale_color_discrete(type = RColorBrewer::brewer.pal(6, "Dark2")[3]) +
   labs(x = "Industry isolates in comparison",
        y = "Absolute diff. in resistance",
-       colour = "WHO Region:") +
+       colour = "WHO Region:",
+       title = "European Region") +
   theme_bw() +
   theme(axis.text = element_text(size = 12),
-        axis.title = element_text(size = 12)) +
+        axis.title = element_text(size = 12),
+        plot.title = element_text(size=12, face = "bold")) +
   guides(colour = "none")
 
 am_data = x_y %>%
@@ -244,10 +269,12 @@ p4 = ggplot(am_data) +
   scale_color_discrete(type = RColorBrewer::brewer.pal(6, "Dark2")[4]) +
   labs(x = "Industry isolates in comparison",
        y = "Absolute diff. in resistance",
-       colour = "WHO Region:") +
+       colour = "WHO Region:",
+       title = "Region of the Americas") +
   theme_bw() +
   theme(axis.text = element_text(size = 12),
-        axis.title = element_text(size = 12)) +
+        axis.title = element_text(size = 12),
+        plot.title = element_text(size=12, face = "bold")) +
   guides(colour = "none")
 
 se_data = x_y %>%
@@ -266,10 +293,12 @@ p5 = ggplot(se_data) +
   scale_color_discrete(type = RColorBrewer::brewer.pal(6, "Dark2")[5]) +
   labs(x = "Industry isolates in comparison",
        y = "Absolute diff. in resistance",
-       colour = "WHO Region:") +
+       colour = "WHO Region:",
+       title = "South-East Asia Region") +
   theme_bw() +
   theme(axis.text = element_text(size = 12),
-        axis.title = element_text(size = 12)) +
+        axis.title = element_text(size = 12),
+        plot.title = element_text(size=12, face = "bold")) +
   guides(colour = "none")
 
 wp_data = x_y %>%
@@ -288,10 +317,12 @@ p6 = ggplot(wp_data) +
   scale_color_discrete(type = RColorBrewer::brewer.pal(6, "Dark2")[6]) +
   labs(x = "Industry isolates in comparison",
        y = "Absolute diff. in resistance",
-       colour = "WHO Region:") +
+       colour = "WHO Region:",
+       title = "Western Pacific Region") +
   theme_bw() +
   theme(axis.text = element_text(size = 12),
-        axis.title = element_text(size = 12)) +
+        axis.title = element_text(size = 12),
+        plot.title = element_text(size=12, face = "bold")) +
   guides(colour = "none")
 
 plot_grid(p0,

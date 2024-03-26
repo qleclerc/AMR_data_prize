@@ -82,7 +82,8 @@ df_GLASS19 = df_GLASS19 %>%
 df_GLASS_agg = rbind(df_GLASS, df_GLASS19) %>%
   distinct() %>%
   group_by(Iso3, CountryTerritoryArea, WHORegionName, Year, Specimen, PathogenName, AbTargets) %>%
-  summarise(across(TotalSpecimenIsolates:PercentResistant, max))
+  summarise(across(TotalSpecimenIsolates:PercentResistant, max)) %>%
+  ungroup
 
 
 # CHECK mrsa, sometimes have met and oxa and cef and doesn't all line up, and changes which two line up together
